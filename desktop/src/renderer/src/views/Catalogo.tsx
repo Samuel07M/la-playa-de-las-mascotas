@@ -1,7 +1,7 @@
 // HU-01 · HU-02 — Catálogo de productos (vCat, catList, pForm, pSave, tog del mockup).
 import { useState } from 'react'
 import { CATEGORIAS } from '@shared/constantes'
-import { erroresPorCampo, numeroDe, productoSchema } from '@shared/esquemas'
+import { erroresPorCampo, M, numeroDe, productoSchema } from '@shared/esquemas'
 import { money } from '@shared/formato'
 import type { Producto } from '@shared/tipos'
 import { api, ErrorDeApi, qs } from '../api'
@@ -79,6 +79,9 @@ export default function Catalogo() {
                     <button className="b" onClick={() => modal(<ProductoForm producto={p} />)}>
                       Editar
                     </button>{' '}
+                    <button className="b" onClick={() => modal(<AliasForm id={p.id} />)}>
+                      Alias
+                    </button>{' '}
                     <button className="b" onClick={() => tog(p)}>
                       {p.activo ? 'Desactivar' : 'Activar'}
                     </button>
@@ -90,6 +93,84 @@ export default function Catalogo() {
         ) : (
           <p className="sub">Sin resultados.</p>
         )}
+      </div>
+    </>
+  )
+}
+
+// HU-02 — aForm, aAdd y aDel del mockup.
+function AliasForm({ id }: { id: number }) {
+  const { cerrarModal, toast, huboCambios } = useUi()
+  const productos = usarDatos<Producto[]>('/productos')
+  const p = productos?.find((x) => x.id === id)
+  const [val, setVal] = useState('')
+  const [err, setErr] = useState('')
+  if (!p) return null
+
+  async function aAdd() {
+    const v = val.trim()
+    if (!v) {
+      setVal('')
+      return setErr(M.alias)
+    }
+    try {
+      await api.post(`/productos/${id}/alias`, { texto: v })
+    } catch (e) {
+      return setErr((e as Error).message)
+    }
+    setVal('')
+    setErr('')
+    toast('Alias agregado')
+    huboCambios()
+  }
+
+  async function aDel(aliasId: number) {
+    try {
+      await api.del(`/alias/${aliasId}`)
+      huboCambios()
+    } catch (e) {
+      toast((e as Error).message, true)
+    }
+  }
+
+  return (
+    <>
+      <h3>Alias de «{p.nombre}»</h3>
+      <p className="sub">Nombres con los que Alirio y Olga llaman al producto.</p>
+      <div style={{ marginBottom: 12 }}>
+        {p.alias.length ? (
+          p.alias.map((a) => (
+            <span key={a.id} className="chip">
+              {a.texto}{' '}
+              <button onClick={() => aDel(a.id)} title="Quitar">
+                ✕
+              </button>
+            </span>
+          ))
+        ) : (
+          <span className="sub">Sin alias aún.</span>
+        )}
+      </div>
+      <label>
+        Nuevo alias
+        <input
+          id="f_a"
+          className={`in ${err ? 'bad' : ''}`}
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') aAdd()
+          }}
+        />
+        <Er m={err} />
+      </label>
+      <div className="mf">
+        <button className="b" onClick={cerrarModal}>
+          Cerrar
+        </button>
+        <button className="b pri" onClick={aAdd}>
+          Agregar
+        </button>
       </div>
     </>
   )

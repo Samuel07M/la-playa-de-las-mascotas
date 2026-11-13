@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import type { BaseDeDatos } from './db/connection'
 import { ErrorApi } from './errores'
 import { rutasProductos } from './modules/productos.rutas'
+import { rutasAlias } from './modules/alias'
 
 export interface OpcionesApp {
   /** Orígenes que pueden llamar a la API desde el navegador (la ventana de la app). */
@@ -41,6 +42,7 @@ export function crearApp(db: BaseDeDatos, opciones: OpcionesApp = {}): FastifyIn
 
   app.get('/salud', async () => ({ ok: true, db: db.open }))
   rutasProductos(app, db)
+  rutasAlias(app, db)
 
   return app
 }
