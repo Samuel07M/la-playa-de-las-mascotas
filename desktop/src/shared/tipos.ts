@@ -1,4 +1,4 @@
-import type { Categoria, MetodoPago, TipoMovimiento } from './constantes'
+import type { Categoria, MetodoPago, Rotacion, TipoMovimiento } from './constantes'
 
 export interface Alias {
   id: number
@@ -68,4 +68,86 @@ export interface VentaRegistrada {
 
 export interface ErrorRespuesta {
   error: { campo?: string; mensaje: string; productos?: string[] }
+}
+
+// HU-07
+export interface Proveedor {
+  id: number
+  nombre: string
+  telefono: string | null
+  correo: string | null
+  activo: boolean
+  /** Cantidad de precios registrados en su historial. */
+  precios: number
+}
+
+export interface PrecioProveedor {
+  id: number
+  proveedorId: number
+  proveedor: string
+  productoId: number
+  producto: string
+  precio: number
+  /** Día del precio, AAAA-MM-DD. */
+  fecha: string
+}
+
+// HU-08
+export interface DiaCaja {
+  dia: string
+  ventas: number
+  totalEfectivo: number
+  totalDigital: number
+  total: number
+  /** Cuadre ya guardado para ese día, si existe. */
+  cuadre: Cuadre | null
+}
+
+export interface Cuadre {
+  id: number
+  dia: string
+  totalEfectivo: number
+  totalDigital: number
+  efectivoContado: number
+  diferencia: number
+  usuario: string
+  creadoEn: string
+}
+
+// HU-09
+export interface FilaRotacion {
+  id: number
+  nombre: string
+  categoria: string
+  vendidas: number
+  stock: number
+  rotacion: Rotacion
+}
+
+export interface TopProducto {
+  id: number
+  nombre: string
+  cantidad: number
+  valor: number
+}
+
+export interface TopProveedor {
+  id: number
+  nombre: string
+  entradas: number
+  unidades: number
+  valor: number
+}
+
+// HU-15
+export interface Mensaje {
+  id: number
+  texto: string
+  usuario: string
+  fecha: string
+  estado: 'confirmado' | 'corregido' | 'no_entendido'
+  revisado: boolean
+  productoId: number | null
+  producto: string | null
+  aliasTexto: string | null
 }

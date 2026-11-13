@@ -18,7 +18,17 @@ export const M = {
   sobreStock: (productos: string[]) =>
     'Estos productos superan el stock disponible: ' +
     productos.join(', ') +
-    '. ¿Confirmas la venta de todos modos?'
+    '. ¿Confirmas la venta de todos modos?',
+  // HU-07, HU-08, HU-09 y HU-15 no tienen mockup: textos propuestos (docs/PREGUNTAS.md, 24).
+  correo: 'Escribe un correo válido.',
+  proveedorActivo: 'Selecciona un proveedor activo.',
+  proveedorNoExiste: 'El proveedor no existe.',
+  proveedorSinEliminar: 'Los proveedores no se eliminan: solo se pueden desactivar.',
+  fecha: 'Selecciona una fecha.',
+  rango: 'La fecha inicial no puede ser posterior a la final.',
+  efectivoContado: 'Indica el efectivo contado (entero, 0 o más).',
+  cuadreExiste: 'Ya hay un cuadre guardado para este día.',
+  mensajeNoExiste: 'El mensaje no existe.'
 } as const
 
 const id = (mensaje: string) => z.number({ error: mensaje }).int(mensaje).positive(mensaje)
@@ -49,6 +59,8 @@ export type VentaEntrada = z.infer<typeof ventaSchema>
 
 export const entradaSchema = z.object({
   referencia: z.string({ error: M.referencia }).trim().min(1, M.referencia),
+  /** Proveedor opcional de la recepción (compras del reporte de proveedores, HU-09). */
+  proveedorId: id(M.proveedorActivo).nullish(),
   lineas: z
     .array(z.object({ productoId: id(M.productoExistente), cantidad }))
     .min(1, M.productoExistente)
@@ -63,7 +75,54 @@ export const bajaSchema = z.object({
 })
 export type BajaEntrada = z.infer<typeof bajaSchema>
 
-export const fechaDia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+/** Día "AAAA-MM-DD" que existe en el calendario. */
+export const fechaDia = z
+  .string({ error: M.fecha })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, M.fecha)
+  .refine((d) => {
+    const t = Date.parse(d + 'T00:00:00Z')
+    return !Number.isNaN(t) && new Date(t).toISOString().startsWith(d)
+  }, M.fecha)
+
+const opcional = z
+  .string()
+  .trim()
+  .nullish()
+  .transform((v) => v || null)
+
+// HU-07
+export const proveedorSchema = z.object({
+  nombre: z.string({ error: M.nombre }).trim().min(1, M.nombre),
+  telefono: opcional,
+  correo: opcional.refine((v) => v === null || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), M.correo)
+})
+export type ProveedorEntrada = z.infer<typeof proveedorSchema>
+
+export const precioProveedorSchema = z.object({
+  productoId: id(M.productoExistente),
+  precio: z.number({ error: M.precio }).int(M.precio).positive(M.precio),
+  fecha: fechaDia
+})
+export type PrecioProveedorEntrada = z.infer<typeof precioProveedorSchema>
+
+// HU-08
+export const cuadreSchema = z.object({
+  dia: fechaDia,
+  efectivoContado: z.number({ error: M.efectivoContado }).int(M.efectivoContado).min(0, M.efectivoContado)
+})
+export type CuadreEntrada = z.infer<typeof cuadreSchema>
+
+// HU-09
+export const rangoSchema = z
+  .object({ desde: fechaDia, hasta: fechaDia })
+  .refine((r) => r.desde <= r.hasta, { message: M.rango, path: ['desde'] })
+export type Rango = z.infer<typeof rangoSchema>
+
+// HU-15
+export const aliasDesdeMensajeSchema = z.object({
+  productoId: id(M.productoExistente),
+  texto: z.string({ error: M.alias }).trim().min(1, M.alias)
+})
 
 /**
  * Convierte los errores de Zod en { campo: mensaje } (primer mensaje por campo),

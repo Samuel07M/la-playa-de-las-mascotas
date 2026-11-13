@@ -19,3 +19,7 @@ export type Categoria = (typeof CATEGORIAS)[number]
 export type MetodoPago = (typeof METODOS_PAGO)[number]
 export type MotivoBaja = (typeof MOTIVOS_BAJA)[number]
 export type TipoMovimiento = 'venta' | 'entrada' | 'baja'
+export const ROTACIONES = ['alta', 'media', 'baja'] as const
+export type Rotacion = (typeof ROTACIONES)[number]
+export const TOP_PRODUCTOS = 10
+export const TOP_PROVEEDORES = 5

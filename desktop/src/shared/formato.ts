@@ -23,3 +23,13 @@ export function limitesDia(dia: string): { desde: string; hasta: string } {
   const hasta = new Date(`${dia}T23:59:59.999-05:00`)
   return { desde: desde.toISOString(), hasta: hasta.toISOString() }
 }
+
+/** Día de hoy "AAAA-MM-DD" en hora de Colombia. */
+export const hoyColombia = (ahora = Date.now()): string => new Date(ahora - 5 * 36e5).toISOString().slice(0, 10)
+
+/** Suma días a un día "AAAA-MM-DD". */
+export const sumarDias = (dia: string, dias: number): string =>
+  new Date(Date.parse(dia + 'T12:00:00Z') + dias * 864e5).toISOString().slice(0, 10)
+
+/** "2026-11-12" → "12/11/2026" (DD/MM/AAAA, README §8) para días sin hora. */
+export const fdia = (dia: string): string => dia.split('-').reverse().join('/')

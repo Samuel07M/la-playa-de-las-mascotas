@@ -9,16 +9,18 @@ import NuevaVenta from './views/NuevaVenta'
 import Entradas from './views/Entradas'
 import Bajas from './views/Bajas'
 import Inventario from './views/Inventario'
+import Proveedores from './views/Proveedores'
 
-type Vista = 'cat' | 'sale' | 'ent' | 'baj' | 'inv'
+type Vista = 'cat' | 'sale' | 'ent' | 'baj' | 'inv' | 'prov'
 
-// Menú del mockup (constante N de render()).
+// Menú del mockup (constante N de render()) + pantallas de la Fase 3 (PLAN §7), en el orden del plan.
 const N: [Vista, string][] = [
   ['cat', 'Catálogo'],
   ['sale', 'Nueva venta'],
   ['ent', 'Entradas'],
   ['baj', 'Bajas'],
-  ['inv', 'Inventario']
+  ['inv', 'Inventario'],
+  ['prov', 'Proveedores'],
 ]
 
 const VISTAS: Record<Vista, () => React.JSX.Element> = {
@@ -26,7 +28,8 @@ const VISTAS: Record<Vista, () => React.JSX.Element> = {
   sale: NuevaVenta,
   ent: Entradas,
   baj: Bajas,
-  inv: Inventario
+  inv: Inventario,
+  prov: Proveedores,
 }
 
 export default function App() {
@@ -42,6 +45,7 @@ function Armazon() {
   const Vista = VISTAS[view]
   // Contador de productos bajo el mínimo en el menú (HU-06).
   const L = (usarDatos<FilaInventario[]>('/inventario') ?? []).filter((r) => r.bajoMinimo).length
+  const tag: Partial<Record<Vista, number>> = { inv: L }
   return (
     <div className="app">
       <aside className="side">
@@ -60,7 +64,7 @@ function Armazon() {
               <span className="ic" dangerouslySetInnerHTML={{ __html: IC[k] }} />
               <span className="tx">
                 <span>{t}</span>
-                {k === 'inv' && L ? <span className="tag rd">{L}</span> : null}
+                {tag[k] ? <span className="tag rd">{tag[k]}</span> : null}
               </span>
             </button>
           ))}

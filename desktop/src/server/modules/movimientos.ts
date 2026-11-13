@@ -13,6 +13,8 @@ export interface NuevoMovimiento {
   detalle?: string | null
   ventaId?: number | null
   precioUnitario?: number | null
+  /** Solo en entradas: proveedor de la recepción (HU-09). */
+  proveedorId?: number | null
   usuario?: string
   fecha?: string
 }
@@ -22,8 +24,8 @@ export function registrarMovimiento(db: BaseDeDatos, m: NuevoMovimiento): number
   const r = db
     .prepare(
       `INSERT INTO movimientos
-        (producto_id, tipo, cantidad, motivo, referencia, detalle, venta_id, precio_unitario, usuario, fecha)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (producto_id, tipo, cantidad, motivo, referencia, detalle, venta_id, precio_unitario, proveedor_id, usuario, fecha)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       m.productoId,
@@ -34,6 +36,7 @@ export function registrarMovimiento(db: BaseDeDatos, m: NuevoMovimiento): number
       m.detalle || null,
       m.ventaId ?? null,
       m.precioUnitario ?? null,
+      m.tipo === 'entrada' ? (m.proveedorId ?? null) : null,
       m.usuario ?? USUARIO,
       m.fecha ?? new Date().toISOString()
     )
