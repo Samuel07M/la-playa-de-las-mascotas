@@ -1,7 +1,8 @@
 import type { BaseDeDatos } from '../db/connection'
-import { M, type BajaEntrada } from '../../shared/esquemas'
+import type { FastifyInstance } from 'fastify'
+import { bajaSchema, M, type BajaEntrada } from '../../shared/esquemas'
 import type { Movimiento, ResumenBaja } from '../../shared/tipos'
-import { ErrorApi } from '../errores'
+import { ErrorApi, validar } from '../errores'
 import { movimientosDeTipo, registrarMovimiento, stockDe } from './movimientos'
 import { exigirActivo } from './productos'
 
@@ -34,4 +35,13 @@ export function resumenBajas(db: BaseDeDatos): ResumenBaja[] {
        WHERE m.tipo = 'baja' GROUP BY m.motivo ORDER BY MAX(m.fecha) DESC, MAX(m.id) DESC`
     )
     .all() as ResumenBaja[]
+}
+
+export function rutasBajas(app: FastifyInstance, db: BaseDeDatos): void {
+  app.post('/bajas', async (req, reply) => {
+    const id = registrarBaja(db, validar(bajaSchema, req.body))
+    return reply.code(201).send({ id })
+  })
+  app.get('/bajas', async () => listarBajas(db))
+  app.get('/bajas/resumen', async () => resumenBajas(db))
 }
