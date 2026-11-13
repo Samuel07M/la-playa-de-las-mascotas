@@ -7,4 +7,5 @@ export const IC: Record<string, string> = {
   inv: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 3v18h18\"/><path d=\"M8 17v-5M13 17V8M18 17v-9\"/></svg>",
   // Fase 3 (sin mockup): mismo estilo de trazo que los íconos del mockup.
   prov: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M1 4h14v12H1z\"/><path d=\"M15 9h4l3 3v4h-7z\"/><circle cx=\"5.5\" cy=\"18.5\" r=\"2\"/><circle cx=\"17.5\" cy=\"18.5\" r=\"2\"/></svg>",
+  caja: "<svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2\" y=\"6\" width=\"20\" height=\"12\" rx=\"2\"/><circle cx=\"12\" cy=\"12\" r=\"2.5\"/><path d=\"M6 12h.01M18 12h.01\"/></svg>",
 }

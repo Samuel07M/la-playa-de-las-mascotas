@@ -10,8 +10,9 @@ import Entradas from './views/Entradas'
 import Bajas from './views/Bajas'
 import Inventario from './views/Inventario'
 import Proveedores from './views/Proveedores'
+import Cuadre from './views/Cuadre'
 
-type Vista = 'cat' | 'sale' | 'ent' | 'baj' | 'inv' | 'prov'
+type Vista = 'cat' | 'sale' | 'ent' | 'baj' | 'inv' | 'prov' | 'caja'
 
 // Menú del mockup (constante N de render()) + pantallas de la Fase 3 (PLAN §7), en el orden del plan.
 const N: [Vista, string][] = [
@@ -21,6 +22,7 @@ const N: [Vista, string][] = [
   ['baj', 'Bajas'],
   ['inv', 'Inventario'],
   ['prov', 'Proveedores'],
+  ['caja', 'Cuadre de caja'],
 ]
 
 const VISTAS: Record<Vista, () => React.JSX.Element> = {
@@ -30,6 +32,7 @@ const VISTAS: Record<Vista, () => React.JSX.Element> = {
   baj: Bajas,
   inv: Inventario,
   prov: Proveedores,
+  caja: Cuadre,
 }
 
 export default function App() {
