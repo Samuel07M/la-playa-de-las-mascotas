@@ -4,6 +4,7 @@ import { ErrorApi } from './errores'
 import { rutasProductos } from './modules/productos.rutas'
 import { rutasAlias } from './modules/alias'
 import { rutasVentas } from './modules/ventas'
+import { rutasEntradas } from './modules/entradas'
 
 export interface OpcionesApp {
   /** Orígenes que pueden llamar a la API desde el navegador (la ventana de la app). */
@@ -45,6 +46,7 @@ export function crearApp(db: BaseDeDatos, opciones: OpcionesApp = {}): FastifyIn
   rutasProductos(app, db)
   rutasAlias(app, db)
   rutasVentas(app, db)
+  rutasEntradas(app, db)
 
   return app
 }
