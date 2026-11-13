@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify'
 import type { BaseDeDatos } from './db/connection'
+import { ErrorApi } from './errores'
 
 export interface OpcionesApp {
   /** Orígenes que pueden llamar a la API desde el navegador (la ventana de la app). */
@@ -20,6 +21,21 @@ export function crearApp(db: BaseDeDatos, opciones: OpcionesApp = {}): FastifyIn
       reply.header('Access-Control-Allow-Headers', 'Content-Type')
     }
     if (req.method === 'OPTIONS') return reply.code(204).send()
+  })
+
+  // Errores siempre como { error: { campo?, mensaje } }.
+  app.setErrorHandler((err, _req, reply) => {
+    if (err instanceof ErrorApi) {
+      return reply
+        .code(err.status)
+        .send({ error: { ...(err.campo ? { campo: err.campo } : {}), mensaje: err.message, ...err.extra } })
+    }
+    const e = err as { statusCode?: number }
+    if (e.statusCode && e.statusCode < 500) {
+      return reply.code(e.statusCode).send({ error: { mensaje: 'Solicitud inválida.' } })
+    }
+    console.error(err)
+    return reply.code(500).send({ error: { mensaje: 'Ocurrió un error inesperado.' } })
   })
 
   app.get('/salud', async () => ({ ok: true, db: db.open }))
