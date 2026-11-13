@@ -77,8 +77,8 @@ export interface Proveedor {
   telefono: string | null
   correo: string | null
   activo: boolean
-  /** Cantidad de precios registrados en su historial. */
-  precios: number
+  /** Cantidad de productos distintos con precio registrado de este proveedor. */
+  productos: number
 }
 
 export interface PrecioProveedor {
@@ -109,6 +109,9 @@ export interface Cuadre {
   totalEfectivo: number
   totalDigital: number
   efectivoContado: number
+  /** Monto digital recibido (null en cuadres guardados antes del esquema v3). */
+  digitalContado: number | null
+  /** Monto total contado − total vendido (antes de v3: solo efectivo). */
   diferencia: number
   usuario: string
   creadoEn: string

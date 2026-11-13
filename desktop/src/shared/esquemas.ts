@@ -27,6 +27,7 @@ export const M = {
   fecha: 'Selecciona una fecha.',
   rango: 'La fecha inicial no puede ser posterior a la final.',
   efectivoContado: 'Indica el efectivo contado (entero, 0 o más).',
+  digitalContado: 'Indica el monto digital recibido (entero, 0 o más).',
   cuadreExiste: 'Ya hay un cuadre guardado para este día.',
   mensajeNoExiste: 'El mensaje no existe.'
 } as const
@@ -108,7 +109,8 @@ export type PrecioProveedorEntrada = z.infer<typeof precioProveedorSchema>
 // HU-08
 export const cuadreSchema = z.object({
   dia: fechaDia,
-  efectivoContado: z.number({ error: M.efectivoContado }).int(M.efectivoContado).min(0, M.efectivoContado)
+  efectivoContado: z.number({ error: M.efectivoContado }).int(M.efectivoContado).min(0, M.efectivoContado),
+  digitalContado: z.number({ error: M.digitalContado }).int(M.digitalContado).min(0, M.digitalContado)
 })
 export type CuadreEntrada = z.infer<typeof cuadreSchema>
 

@@ -5,6 +5,7 @@ import { capitalizar, hoyColombia, money, sumarDias } from '@shared/formato'
 import type { FilaRotacion, TopProducto, TopProveedor } from '@shared/tipos'
 import { qs } from '../api'
 import { Encabezado } from '../components/ui'
+import { BarrasH } from '../components/BarrasH'
 import { useMemoria } from '../memoria'
 import { usarDatos } from '../usarDatos'
 
@@ -14,7 +15,10 @@ const T: Record<Rotacion, string> = { alta: 'ok', media: 'bl', baja: 'mu' }
 const SinDatos = ({ m }: { m: string }) => <div className="alert bl">{m}</div>
 
 export default function Reportes() {
-  const [f, setF] = useMemoria('rep.rango', () => ({ desde: sumarDias(hoyColombia(), -29), hasta: hoyColombia() }))
+  const [f, setF] = useMemoria('rep.rango', () => ({
+    desde: sumarDias(hoyColombia(), -29),
+    hasta: hoyColombia()
+  }))
   const valido = rangoSchema.safeParse(f)
   const q = valido.success ? qs(f) : null
   return (
@@ -23,20 +27,30 @@ export default function Reportes() {
       <div className="bar">
         <label style={{ margin: 0, flex: 1 }}>
           Desde
-          <input className="in" style={{ width: '100%' }} type="date" value={f.desde} onChange={(e) => setF({ ...f, desde: e.target.value })} />
+          <input
+            className="in"
+            style={{ width: '100%' }}
+            type="date"
+            value={f.desde}
+            onChange={(e) => setF({ ...f, desde: e.target.value })}
+          />
         </label>
         <label style={{ margin: 0, flex: 1 }}>
           Hasta
-          <input className="in" style={{ width: '100%' }} type="date" value={f.hasta} onChange={(e) => setF({ ...f, hasta: e.target.value })} />
+          <input
+            className="in"
+            style={{ width: '100%' }}
+            type="date"
+            value={f.hasta}
+            onChange={(e) => setF({ ...f, hasta: e.target.value })}
+          />
         </label>
       </div>
       {valido.success ? (
         <>
           <RotacionCard q={q!} />
-          <div className="g2">
-            <TopProductosCard q={q!} />
-            <ProveedoresCard q={q!} />
-          </div>
+          <TopProductosCard q={q!} />
+          <ProveedoresCard q={q!} />
         </>
       ) : (
         <div className="alert rd">{valido.error.issues[0].message}</div>
@@ -51,8 +65,7 @@ function RotacionCard({ q }: { q: string }) {
     <div className="card wrap">
       <b>Rotación de productos</b>
       <small style={{ color: 'var(--mu)', display: 'block', marginBottom: 8 }}>
-        Productos activos por unidades vendidas en el periodo: el tercio que más vende es rotación alta, el del medio
-        media y el que menos vende baja.
+        Los productos activos se dividen en tres grupos iguales según las unidades vendidas en el periodo.
       </small>
       {r === null ? null : r.length ? (
         <>
@@ -95,32 +108,50 @@ function RotacionCard({ q }: { q: string }) {
   )
 }
 
+/** Fila de la gráfica: el tooltip muestra las dos medidas del producto. */
+const fila = (x: TopProducto, valor: number) => ({
+  id: x.id,
+  etiqueta: x.nombre,
+  valor,
+  detalle: `${x.cantidad} unidad${x.cantidad === 1 ? '' : 'es'} · ${money(x.valor)}`
+})
+
 function TopProductosCard({ q }: { q: string }) {
   const r = usarDatos<TopProducto[]>('/reportes/top-productos' + q)
   return (
     <div className="card wrap">
       <b>Top {TOP_PRODUCTOS} productos más vendidos</b>
       {r === null ? null : r.length ? (
-        <table className="tb">
-          <tbody>
-            <tr>
-              <th>#</th>
-              <th>Producto</th>
-              <th>Unidades</th>
-              <th>Valor vendido</th>
-            </tr>
-            {r.map((x, i) => (
-              <tr key={x.id}>
-                <td>{i + 1}</td>
-                <td>
-                  <b>{x.nombre}</b>
-                </td>
-                <td>{x.cantidad}</td>
-                <td>{money(x.valor)}</td>
+        <>
+          <div className="row2" style={{ gap: 24 }}>
+            <BarrasH titulo="Unidades vendidas" filas={r.map((x) => fila(x, x.cantidad))} formato={(n) => String(n)} />
+            <BarrasH
+              titulo="Valor vendido"
+              filas={[...r].sort((a, b) => b.valor - a.valor).map((x) => fila(x, x.valor))}
+              formato={money}
+            />
+          </div>
+          <table className="tb">
+            <tbody>
+              <tr>
+                <th>#</th>
+                <th>Producto</th>
+                <th>Unidades</th>
+                <th>Valor vendido</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+              {r.map((x, i) => (
+                <tr key={x.id}>
+                  <td>{i + 1}</td>
+                  <td>
+                    <b>{x.nombre}</b>
+                  </td>
+                  <td>{x.cantidad}</td>
+                  <td>{money(x.valor)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       ) : (
         <SinDatos m="No hay ventas en el periodo seleccionado." />
       )}

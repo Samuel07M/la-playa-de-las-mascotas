@@ -41,7 +41,7 @@ export default function Proveedores() {
                 <th>Proveedor</th>
                 <th>Teléfono</th>
                 <th>Correo</th>
-                <th>Precios</th>
+                <th>Productos</th>
                 <th>Estado</th>
                 <th></th>
               </tr>
@@ -52,7 +52,7 @@ export default function Proveedores() {
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>{p.telefono ?? '—'}</td>
                   <td>{p.correo ?? '—'}</td>
-                  <td>{p.precios}</td>
+                  <td>{p.productos}</td>
                   <td>
                     <span className={`tag ${p.activo ? 'ok' : 'mu'}`}>{p.activo ? 'Activo' : 'Inactivo'}</span>
                   </td>

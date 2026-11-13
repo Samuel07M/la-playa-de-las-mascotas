@@ -38,7 +38,7 @@ describe('HU-07 · Proveedores e historial de precios', () => {
     expect(r.statusCode).toBe(201)
     expect(r.json()).toMatchObject({ proveedor: 'Granja', productoId: prod, precio: 48000, fecha: '2026-11-01' })
     const lista = (await app.inject({ method: 'GET', url: '/proveedores' })).json()
-    expect(lista[0].precios).toBe(1)
+    expect(lista[0].productos).toBe(1)
   })
 
   it('C2: rechaza precio ≤ 0, decimales, fecha inválida, producto inexistente y proveedor inactivo', async () => {
@@ -74,6 +74,12 @@ describe('HU-07 · Proveedores e historial de precios', () => {
       ['Bodega Sur', 51000, '2026-11-10']
     ])
     expect((await app.inject({ method: 'GET', url: '/productos/999/precios' })).statusCode).toBe(404)
+    // La lista cuenta productos distintos: Bodega Sur tiene 2 precios de 1 producto; Agro Norte, 2 productos.
+    const lista = (await app.inject({ method: 'GET', url: '/proveedores' })).json()
+    expect(lista.map((p: { nombre: string; productos: number }) => [p.nombre, p.productos])).toEqual([
+      ['Agro Norte', 2],
+      ['Bodega Sur', 1]
+    ])
   })
 
   it('C4: un proveedor con precios no se elimina: solo se desactiva y conserva su historial', async () => {
@@ -88,7 +94,7 @@ describe('HU-07 · Proveedores e historial de precios', () => {
     expect(() => db.prepare('DELETE FROM precios_proveedor').run()).toThrow(/no se borran/)
     expect(() => db.prepare('UPDATE precios_proveedor SET precio = 1').run()).toThrow(/no se editan/)
     const off = await app.inject({ method: 'PATCH', url: `/proveedores/${pv.id}/activo`, payload: { activo: false } })
-    expect(off.json()).toMatchObject({ activo: false, precios: 1 })
+    expect(off.json()).toMatchObject({ activo: false, productos: 1 })
     expect((await app.inject({ method: 'GET', url: '/proveedores?activos=1' })).json()).toEqual([])
     expect((await app.inject({ method: 'GET', url: `/productos/${prod}/precios` })).json()).toHaveLength(1)
   })

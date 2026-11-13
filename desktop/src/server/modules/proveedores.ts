@@ -19,11 +19,11 @@ interface FilaProveedor {
   telefono: string | null
   correo: string | null
   activo: number
-  precios: number
+  productos: number
 }
 
 const SELECT = `SELECT v.id, v.nombre, v.telefono, v.correo, v.activo,
-  (SELECT COUNT(*) FROM precios_proveedor pp WHERE pp.proveedor_id = v.id) AS precios
+  (SELECT COUNT(DISTINCT pp.producto_id) FROM precios_proveedor pp WHERE pp.proveedor_id = v.id) AS productos
   FROM proveedores v`
 
 const aProveedor = (f: FilaProveedor): Proveedor => ({ ...f, activo: f.activo === 1 })

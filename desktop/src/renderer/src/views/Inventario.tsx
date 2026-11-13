@@ -24,7 +24,8 @@ export default function Inventario() {
       <Encabezado titulo="Inventario" sub="Stock actual, alertas e historial de movimientos." />
       {filas === null ? null : L.length ? (
         <div className="alert rd">
-          ⚠ {L.length} producto{L.length > 1 ? 's' : ''} por debajo del stock mínimo: {L.map((p) => p.nombre).join(', ')}.
+          ⚠ {L.length} producto{L.length > 1 ? 's' : ''} por debajo del stock mínimo:{' '}
+          {L.map((p) => p.nombre).join(', ')}.
         </div>
       ) : (
         <div className="alert ok">✓ Todos los productos están por encima del mínimo.</div>
@@ -65,7 +66,7 @@ export default function Inventario() {
       </div>
       <div className="card" id="mvc">
         <b>Historial de movimientos</b>
-        <div className="bar" style={{ margin: '10px 0' }}>
+        <div className="bar" style={{ margin: '10px 0', alignItems: 'flex-end' }}>
           <select className="in" value={mf.pid} onChange={(e) => setMf({ ...mf, pid: e.target.value })}>
             <option value="">Todos los productos</option>
             {(productos ?? []).map((p) => (
@@ -74,8 +75,26 @@ export default function Inventario() {
               </option>
             ))}
           </select>
-          <input className="in" type="date" value={mf.from} onChange={(e) => setMf({ ...mf, from: e.target.value })} />
-          <input className="in" type="date" value={mf.to} onChange={(e) => setMf({ ...mf, to: e.target.value })} />
+          <label style={{ margin: 0, flex: 1, minWidth: 170 }}>
+            fecha inicial
+            <input
+              className="in"
+              style={{ width: '100%' }}
+              type="date"
+              value={mf.from}
+              onChange={(e) => setMf({ ...mf, from: e.target.value })}
+            />
+          </label>
+          <label style={{ margin: 0, flex: 1, minWidth: 170 }}>
+            fecha final
+            <input
+              className="in"
+              style={{ width: '100%' }}
+              type="date"
+              value={mf.to}
+              onChange={(e) => setMf({ ...mf, to: e.target.value })}
+            />
+          </label>
         </div>
         <div className="wrap" id="mv">
           <MvList pid={mf.pid} from={mf.from} to={mf.to} />

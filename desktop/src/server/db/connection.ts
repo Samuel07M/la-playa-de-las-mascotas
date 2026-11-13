@@ -1,12 +1,13 @@
 import Database from 'better-sqlite3'
 import esquemaV1 from './schema.sql?raw'
 import esquemaV2 from './schema-v2.sql?raw'
+import esquemaV3 from './schema-v3.sql?raw'
 
 export type BaseDeDatos = Database.Database
 
 // Cada posición es una versión del esquema (PRAGMA user_version).
 // Nunca se edita una migración ya publicada: se agrega una nueva al final.
-const MIGRACIONES: string[] = [esquemaV1, esquemaV2]
+const MIGRACIONES: string[] = [esquemaV1, esquemaV2, esquemaV3]
 
 export function abrirBaseDeDatos(ruta: string): BaseDeDatos {
   const db = new Database(ruta)

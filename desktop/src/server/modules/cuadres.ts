@@ -13,6 +13,7 @@ interface FilaCuadre {
   total_efectivo: number
   total_digital: number
   efectivo_contado: number
+  digital_contado: number | null
   diferencia: number
   usuario: string
   creado_en: string
@@ -24,6 +25,7 @@ const aCuadre = (f: FilaCuadre): Cuadre => ({
   totalEfectivo: f.total_efectivo,
   totalDigital: f.total_digital,
   efectivoContado: f.efectivo_contado,
+  digitalContado: f.digital_contado,
   diferencia: f.diferencia,
   usuario: f.usuario,
   creadoEn: f.creado_en
@@ -57,7 +59,7 @@ export function totalesDelDia(db: BaseDeDatos, dia: string): DiaCaja {
 }
 
 /**
- * Guarda el cuadre de un día: diferencia = efectivo contado − total esperado en efectivo.
+ * Guarda el cuadre de un día: diferencia = monto total contado (efectivo + digital) − total vendido.
  * Los totales se calculan aquí (no se confía en la interfaz). Un solo cuadre por día.
  */
 export function guardarCuadre(db: BaseDeDatos, c: CuadreEntrada): Cuadre {
@@ -65,14 +67,15 @@ export function guardarCuadre(db: BaseDeDatos, c: CuadreEntrada): Cuadre {
     if (cuadreDe(db, c.dia)) throw new ErrorApi(409, M.cuadreExiste, 'dia')
     const t = totalesDelDia(db, c.dia)
     db.prepare(
-      `INSERT INTO cuadres_caja (dia, total_efectivo, total_digital, efectivo_contado, diferencia, usuario, creado_en)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO cuadres_caja (dia, total_efectivo, total_digital, efectivo_contado, digital_contado, diferencia, usuario, creado_en)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     ).run(
       c.dia,
       t.totalEfectivo,
       t.totalDigital,
       c.efectivoContado,
-      c.efectivoContado - t.totalEfectivo,
+      c.digitalContado,
+      c.efectivoContado + c.digitalContado - t.total,
       USUARIO,
       new Date().toISOString()
     )

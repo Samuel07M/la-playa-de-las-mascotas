@@ -1,5 +1,5 @@
 // HU-03 — Nueva venta (vSale, grid, cartR, sell, doSell del mockup).
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { M } from '@shared/esquemas'
 import { money } from '@shared/formato'
 import type { MetodoPago } from '@shared/constantes'
@@ -27,20 +27,19 @@ export default function NuevaVenta() {
   const [cart, setCart] = useMemoria<Linea[]>('sale.cart', [])
   const [pay, setPay] = useMemoria<MetodoPago>('sale.pay', 'efectivo')
   const [t0, setT0] = useMemoria<number | null>('sale.t0', null)
-  const [, setTick] = useState(0)
   const [enviando, setEnviando] = useState(false)
 
-  // Cronómetro: se actualiza cada segundo.
-  useEffect(() => {
-    const h = setInterval(() => setTick((t) => t + 1), 1000)
-    return () => clearInterval(h)
-  }, [])
+  // El cronómetro ya no se muestra en el recuadro, pero sigue midiendo cada venta: su tiempo
+  // aparece en el mensaje de confirmación (indicador de 4 minutos, PLAN §8).
 
   const prod = (id: number) => productos?.find((p) => p.id === id)
   const s = sq.trim().toLowerCase()
   const visibles = (productos ?? [])
     .filter((p) => p.activo)
-    .filter((p) => !s || (p.nombre + ' ' + p.categoria + ' ' + p.alias.map((a) => a.texto).join(' ')).toLowerCase().includes(s))
+    .filter(
+      (p) =>
+        !s || (p.nombre + ' ' + p.categoria + ' ' + p.alias.map((a) => a.texto).join(' ')).toLowerCase().includes(s)
+    )
   const lineas = cart.filter((r) => prod(r.pid))
   const tot = totalVenta(lineas.map((r) => ({ cantidad: r.q, precio: prod(r.pid)!.precioVenta })))
 
@@ -49,7 +48,8 @@ export default function NuevaVenta() {
     setCart(i >= 0 ? cart.map((x, j) => (j === i ? { ...x, q: x.q + 1 } : x)) : [...cart, { pid: id, q: 1 }])
     if (!t0) setT0(Date.now())
   }
-  const setQ = (i: number, v: string | number) => setCart(cart.map((x, j) => (j === i ? { ...x, q: cantidadDe(v) } : x)))
+  const setQ = (i: number, v: string | number) =>
+    setCart(cart.map((x, j) => (j === i ? { ...x, q: cantidadDe(v) } : x)))
   function quitar(i: number) {
     const c = cart.filter((_, j) => j !== i)
     setCart(c)
@@ -108,11 +108,14 @@ export default function NuevaVenta() {
           </div>
         </div>
         <div className="card" id="cart">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
             <b>Venta actual</b>
-            <span className="tag mu" id="tm">
-              ⏱ {cronometro(t0)} · meta &lt; 4:00
-            </span>
           </div>
           {cart.length ? (
             cart.map((r, i) => {
