@@ -1,8 +1,9 @@
 import type { BaseDeDatos } from '../db/connection'
 import { USUARIO } from '../../shared/constantes'
-import { M, type VentaEntrada } from '../../shared/esquemas'
+import type { FastifyInstance } from 'fastify'
+import { M, ventaSchema, type VentaEntrada } from '../../shared/esquemas'
 import type { VentaRegistrada } from '../../shared/tipos'
-import { ErrorApi } from '../errores'
+import { ErrorApi, validar } from '../errores'
 import { registrarMovimiento, stockDe } from './movimientos'
 import { exigirActivo } from './productos'
 
@@ -61,4 +62,10 @@ export function registrarVenta(
     })
     return { id: ventaId, consecutivo, metodoPago: v.metodoPago, total }
   })()
+}
+
+export function rutasVentas(app: FastifyInstance, db: BaseDeDatos): void {
+  app.post('/ventas', async (req, reply) => {
+    return reply.code(201).send(registrarVenta(db, validar(ventaSchema, req.body)))
+  })
 }
