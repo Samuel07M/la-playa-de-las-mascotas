@@ -1,0 +1,22 @@
+appId: co.laplayadelasmascotas.app
+productName: La Playa de las Mascotas
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - node_modules/better-sqlite3/**
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  shortcutName: La Playa de las Mascotas
+  artifactName: La-Playa-de-las-Mascotas-Setup-${version}.${ext}
+npmRebuild: false
