@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { M } from '@shared/esquemas'
 import { fd } from '@shared/formato'
-import type { EntradaReciente, Producto } from '@shared/tipos'
+import type { EntradaReciente, Producto, Proveedor } from '@shared/tipos'
 import { api, ErrorDeApi } from '../api'
 import { Encabezado, Er, useUi } from '../components/ui'
 import { useMemoria } from '../memoria'
@@ -14,6 +14,7 @@ interface Linea {
 }
 interface Errores {
   r?: string
+  pv?: string
   l: (string | undefined)[]
 }
 
@@ -21,6 +22,9 @@ export default function Entradas() {
   const { toast, huboCambios } = useUi()
   const activos = usarDatos<Producto[]>('/productos?activos=1')
   const recientes = usarDatos<EntradaReciente[]>('/entradas/recientes')
+  // Proveedor opcional (agregado en la Fase 3 para el reporte de proveedores de HU-09).
+  const proveedores = usarDatos<Proveedor[]>('/proveedores?activos=1')
+  const [epv, setEpv] = useMemoria('ent.prov', '')
   const [eref, setEref] = useMemoria('ent.ref', '')
   const [ent, setEnt] = useMemoria<Linea[]>('ent.lineas', [{ pid: '', q: '' }])
   const [eErr, setEErr] = useState<Errores | null>(null)
@@ -49,17 +53,20 @@ export default function Entradas() {
     try {
       await api.post('/entradas', {
         referencia: eref.trim(),
+        proveedorId: epv ? Number(epv) : null,
         lineas: ent.map((l) => ({ productoId: Number(l.pid), cantidad: Number(l.q) }))
       })
     } catch (e) {
       const x = e as ErrorDeApi
       const m = x.campo?.match(/^lineas\.(\d+)/)
       if (x.campo === 'referencia') setEErr({ r: x.message, l: [] })
+      else if (x.campo === 'proveedorId') setEErr({ pv: x.message, l: [] })
       else if (m) setEErr({ l: Object.assign([], { [Number(m[1])]: x.message }) })
       return toast(x.campo ? 'Revisa los campos marcados' : x.message, true)
     }
     const n = ent.length
     setEref('')
+    setEpv('')
     setEnt([{ pid: '', q: '' }])
     setEErr(null)
     toast(`Entrada registrada (${n} producto${n > 1 ? 's' : ''}). Stock actualizado.`)
@@ -79,6 +86,18 @@ export default function Entradas() {
             onChange={(e) => setEref(e.target.value)}
           />
           <Er m={E.r} />
+        </label>
+        <label>
+          Proveedor (opcional)
+          <select className={`in ${E.pv ? 'bad' : ''}`} value={epv} onChange={(e) => setEpv(e.target.value)}>
+            <option value="">Sin proveedor</option>
+            {(proveedores ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
+              </option>
+            ))}
+          </select>
+          <Er m={E.pv} />
         </label>
         {ent.map((l, i) => (
           <div key={i} className="ln" style={{ gridTemplateColumns: '1fr 100px auto' }}>

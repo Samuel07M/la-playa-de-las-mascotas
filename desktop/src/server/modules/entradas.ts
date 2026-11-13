@@ -6,6 +6,7 @@ import type { EntradaReciente } from '../../shared/tipos'
 import { validar } from '../errores'
 import { registrarMovimiento } from './movimientos'
 import { exigirActivo } from './productos'
+import { exigirProveedorActivo } from './proveedores'
 
 /** Registra una recepción: un movimiento "entrada" por producto, todos con la misma referencia. */
 export function registrarEntrada(
@@ -17,6 +18,7 @@ export function registrarEntrada(
     const productos = e.lineas.map((l, i) =>
       exigirActivo(db, l.productoId, M.productoExistente, `lineas.${i}.productoId`)
     )
+    if (e.proveedorId) exigirProveedorActivo(db, e.proveedorId)
     const f = fecha ?? new Date().toISOString()
     e.lineas.forEach((l, i) =>
       registrarMovimiento(db, {
@@ -25,6 +27,7 @@ export function registrarEntrada(
         cantidad: l.cantidad,
         motivo: MOTIVO_ENTRADA,
         referencia: e.referencia,
+        proveedorId: e.proveedorId ?? null,
         fecha: f
       })
     )
