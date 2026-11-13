@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import logo from './assets/logo.webp'
 import { IC } from './iconos'
+import type { FilaInventario } from '@shared/tipos'
 import { UiProvider } from './components/ui'
+import { usarDatos } from './usarDatos'
 import Catalogo from './views/Catalogo'
 import NuevaVenta from './views/NuevaVenta'
 import Entradas from './views/Entradas'
@@ -38,6 +40,8 @@ export default function App() {
 function Armazon() {
   const [view, setView] = useState<Vista>('cat')
   const Vista = VISTAS[view]
+  // Contador de productos bajo el mínimo en el menú (HU-06).
+  const L = (usarDatos<FilaInventario[]>('/inventario') ?? []).filter((r) => r.bajoMinimo).length
   return (
     <div className="app">
       <aside className="side">
@@ -56,6 +60,7 @@ function Armazon() {
               <span className="ic" dangerouslySetInnerHTML={{ __html: IC[k] }} />
               <span className="tx">
                 <span>{t}</span>
+                {k === 'inv' && L ? <span className="tag rd">{L}</span> : null}
               </span>
             </button>
           ))}
