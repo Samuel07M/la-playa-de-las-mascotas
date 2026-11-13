@@ -13,9 +13,7 @@
       "Bash(gh issue view *)"
     ],
     "ask": [
-      "Bash(npm install *)",
-      "Bash(git switch *)",
-      "Bash(git checkout *)"
+      "Bash(npm install *)"
     ],
     "deny": [
       "Bash(git push)",
@@ -24,7 +22,12 @@
       "Bash(gh pr merge *)",
       "Bash(gh repo sync *)",
       "Bash(git reset --hard *)",
-      "Bash(rm -rf *)"
+      "Bash(rm -rf *)",
+      "Bash(git switch *)",
+      "Bash(git checkout -b *)",
+      "Bash(git branch *)",
+      "Bash(git commit --amend*)",
+      "Bash(git rebase *)"
     ]
   }
 }

@@ -3,6 +3,7 @@
 Plan para construir con **Claude Code** la parte funcional de la app de escritorio de Isabel (HU-01 a HU-09 y HU-15), instalarla en el PC de la tienda y recoger las evidencias de las Secciones 4 y 5 de la Entrega 3.
 
 **Reglas del plan**
+- Todo se trabaja en `main`, sin ramas.
 - Solo Samuel hace `push`. Claude Code trabaja y hace commits en local; nunca sube nada (bloqueado en `.claude/settings.json`).
 - El mockup aprobado (`docs/mockup/mockup-aprobado.html`) se sigue al pie de la letra.
 - No se agrega nada que no esté en el backlog, el mockup o el README. Las dudas van a `docs/PREGUNTAS.md`.
@@ -70,7 +71,7 @@ la-playa-de-las-mascotas/
 ├── README.md
 ├── CLAUDE.md                       ← reglas para Claude Code (se lee en cada sesión)
 ├── .claude/settings.json           ← permisos: bloquea push, PR y merge
-├── .github/workflows/ci.yml        ← corre typecheck + pruebas en cada PR
+├── .github/workflows/ci.yml        ← corre typecheck + pruebas en cada push a main
 ├── docs/
 │   ├── PLAN.md                     ← este archivo
 │   ├── PREGUNTAS.md                ← dudas abiertas para el equipo/Isabel
@@ -157,24 +158,25 @@ mensajes         (id, texto, usuario, fecha, estado ∈ {confirmado,corregido,no
 
 ```
 TÚ                                   CLAUDE CODE
-1. git switch main && git pull
-2. git switch -c feat/hu-01-catalogo
-3. claude  →  Shift+Tab x2 (modo Plan)
-4. pegas el prompt de la HU  ───────►  lee CLAUDE.md, el issue, el mockup
+1. git pull                          (siempre en main)
+2. claude  →  Shift+Tab x2 (modo Plan)
+3. pegas el prompt de la HU  ───────►  lee CLAUDE.md, los criterios, el mockup
                                        propone un plan (sin tocar archivos)
-5. revisas el plan; corriges o apruebas ►  implementa + pruebas
+4. revisas el plan; corriges o apruebas ►  implementa + pruebas
                                        corre typecheck y test
                                        reporta criterio por criterio
-6. npm run dev → pruebas tú cada criterio en la app
-7. pides correcciones si algo no coincide con el mockup
-8. Claude Code hace commit local  ◄───  (permitido)
-9. git push -u origin feat/hu-01-catalogo         ← solo tú
-10. abres el PR en GitHub con "Closes #1", revisas y haces merge
-11. /clear en Claude Code antes de la siguiente HU
+5. npm run dev → pruebas tú cada criterio en la app
+6. pides correcciones si algo no coincide con el mockup
+7. Claude Code hace commit local en main ◄─ (último commit: "Closes #1")
+8. git log -3 y git show → revisas lo que se va a subir
+9. git push                                        ← solo tú
+10. /clear en Claude Code antes de la siguiente HU
 ```
 
 **Buenas prácticas**
-- **Una HU por rama y por sesión.** Con `/clear` entre historias, Claude Code no mezcla contextos.
+- **Una HU por sesión, y push al terminar cada HU.** Con `/clear` entre historias, Claude Code no mezcla contextos. Haciendo push por HU, el historial de `main` queda limpio y sirve de evidencia del avance.
+- **Al trabajar directo en `main`, revisa antes de cada push.** No hay PR que te muestre los cambios, así que revísalos con `git show`. Si algo quedó mal, no lo subas: pídele a Claude Code que lo corrija con un commit nuevo. Nunca reescribas commits que ya subiste.
+- **Si alguien más del equipo sube cambios,** haz `git pull` antes de abrir Claude Code para no tener conflictos.
 - **Siempre empieza en modo Plan.** Si el plan menciona algo que no está en la HU o el mockup, recházalo antes de que escriba código.
 - **Compara con el mockup lado a lado.** Abre `docs/mockup/mockup-aprobado.html` en el navegador junto a `npm run dev`. Si algo se ve o se lee distinto, pide corrección citando el texto exacto.
 - **Si Claude Code anota algo en `docs/PREGUNTAS.md`,** resuélvelo con el equipo antes de seguir.
@@ -196,18 +198,18 @@ No implementes nada que no esté en la HU, el mockup o el README. Si algo falta 
 
 ## 7. Fases
 
-### Fase 0 — Base del proyecto (rama `chore/setup`)
+### Fase 0 — Base del proyecto
 **Tú, antes de abrir Claude Code:**
 1. Copia al repositorio `CLAUDE.md`, `.claude/settings.json` y `docs/PLAN.md`.
 2. Guarda el mockup aprobado como `docs/mockup/mockup-aprobado.html`.
-3. Haz commit, push y PR de esos archivos para que el equipo los tenga.
+3. Haz commit y push de esos archivos a `main` para que el equipo los tenga.
 
 **Prompt (modo Plan):**
 ```
 Fase 0 de docs/PLAN.md. Crea el proyecto en desktop/ con electron-vite (plantilla react-ts),
 la estructura de la sección 3 del plan, Vitest, el script typecheck, electron-builder para NSIS
 en Windows (nombre "La Playa de las Mascotas", appId co.laplayadelasmascotas.app) y
-.github/workflows/ci.yml que corra typecheck y test en cada PR.
+.github/workflows/ci.yml que corra typecheck y test en cada push a main.
 Agrega al .gitignore: node_modules, out, dist, dev-data, *.db, .claude/settings.local.json.
 Crea docs/PREGUNTAS.md vacío con un encabezado.
 El proceso main debe: pedir instancia única, abrir la BD en app.getPath('userData')/playa.db
@@ -220,7 +222,7 @@ No implementes pantallas todavía.
 ```
 **Listo cuando:** `npm run dev` abre una ventana vacía, `GET /salud` responde, y `npm test` y `npm run typecheck` pasan.
 
-### Fase 1 — Esquema, reglas de negocio y armazón visual (rama `feat/base`)
+### Fase 1 — Esquema, reglas de negocio y armazón visual
 ```
 Fase 1 de docs/PLAN.md. 
 1) Crea desktop/src/server/db/schema.sql con el modelo de la sección 4 (CHECK, FK, UNIQUE,
@@ -237,15 +239,15 @@ Fase 1 de docs/PLAN.md.
    Las vistas quedan como marcadores vacíos.
 ```
 
-### Fase 2 — HU con mockup (una rama por HU, en este orden)
-| Orden | HU | Pantalla del mockup | Rama |
+### Fase 2 — HU con mockup (una por sesión, en este orden, push al terminar cada una)
+| Orden | HU | Pantalla del mockup | Último commit |
 |---|---|---|---|
-| 1 | HU-01 Catálogo | `vCat`, `catList`, `pForm`, `pSave`, `tog` | `feat/hu-01-catalogo` |
-| 2 | HU-02 Alias | `aForm`, `aAdd`, `aDel` y búsqueda por alias | `feat/hu-02-alias` |
-| 3 | HU-03 Venta | `vSale`, `grid`, `cartR`, `sell`, `doSell` (incluye el cronómetro "meta < 4:00") | `feat/hu-03-venta` |
-| 4 | HU-04 Entradas | `vEnt`, `eSave` | `feat/hu-04-entradas` |
-| 5 | HU-05 Bajas | `vBaj`, `bSave` | `feat/hu-05-bajas` |
-| 6 | HU-06 Inventario | `vInv`, `mvList`, contador de alertas en el menú | `feat/hu-06-inventario` |
+| 1 | HU-01 Catálogo | `vCat`, `catList`, `pForm`, `pSave`, `tog` | `Closes #1` |
+| 2 | HU-02 Alias | `aForm`, `aAdd`, `aDel` y búsqueda por alias | `Closes #2` |
+| 3 | HU-03 Venta | `vSale`, `grid`, `cartR`, `sell`, `doSell` (incluye el cronómetro "meta < 4:00") | `Closes #3` |
+| 4 | HU-04 Entradas | `vEnt`, `eSave` | `Closes #4` |
+| 5 | HU-05 Bajas | `vBaj`, `bSave` | `Closes #5` |
+| 6 | HU-06 Inventario | `vInv`, `mvList`, contador de alertas en el menú | `Closes #6` |
 
 Usa la plantilla de la sección 6. En cada HU, pide que los cambios se reflejen sin recargar en todas las pantallas (HU-01 criterio 3): después de cada acción se vuelven a pedir los datos a la API.
 

@@ -37,7 +37,9 @@ Si dos fuentes se contradicen, o algo no está definido: **detente y pregunta**.
 
 ## Git
 - **Nunca hagas `git push`, ni crees PRs, ni hagas merge.** Solo el usuario sube cambios.
-- Trabaja en la rama que el usuario creó. Puedes hacer commits locales con mensajes tipo `feat(hu-01): ...`, `test(hu-03): ...`.
+- Todo se trabaja en la rama `main`. **No crees ni cambies de rama.**
+- Puedes hacer commits locales en `main`, uno o varios por HU, con mensajes tipo `feat(hu-01): ...`, `test(hu-03): ...`. El último commit de cada HU termina con `Closes #<n>`.
+- No hagas commit si `npm run typecheck` o `npm test` fallan.
 
 ## Antes de dar una tarea por terminada
 1. `npm run typecheck` y `npm test` sin errores.
