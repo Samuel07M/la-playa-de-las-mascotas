@@ -1,16 +1,25 @@
-// Arranque del bot de Telegram para el chat operativo (HU-10).
+// Arranque del bot de Telegram para el chat operativo (HU-10, HU-11).
 // Sin dependencias nuevas: se habla con la API de Telegram por HTTP (fetch) y long polling.
-// El token y los chats autorizados vienen de .env (ver cargarEnv). Si no hay token, el bot no arranca
+// El token y los chats autorizados vienen de .env. Si no hay token, el bot no arranca
 // y la app de escritorio sigue funcionando igual.
+// La lógica de conversación vive en ManejadorChat; aquí solo está el transporte.
 
+import type { BaseDeDatos } from '../db/connection'
 import { ENV_TELEGRAM_CHATS, ENV_TELEGRAM_TOKEN } from '../../shared/config'
-import { decidirRespuesta, parsearChatsAutorizados, type MensajeEntrante, type RespuestaBot } from './logica'
+import { parsearChatsAutorizados } from './logica'
+import { ManejadorChat, type RespuestaChat } from './manejador'
 
 const API = 'https://api.telegram.org'
 
 interface Update {
   update_id: number
-  message?: { chat?: { id?: number }; text?: string }
+  message?: { chat?: { id?: number }; text?: string; from?: { first_name?: string; last_name?: string } }
+}
+
+interface MensajeEntrante {
+  chatId: number
+  texto: string
+  usuario: string
 }
 
 export interface Bot {
@@ -30,9 +39,9 @@ async function llamar<T>(token: string, metodo: string, cuerpo: unknown, signal?
   return datos.result as T
 }
 
-async function responder(token: string, r: RespuestaBot): Promise<void> {
+async function enviar(token: string, chatId: number, r: RespuestaChat): Promise<void> {
   await llamar(token, 'sendMessage', {
-    chat_id: r.chatId,
+    chat_id: chatId,
     text: r.texto,
     reply_markup: r.teclado ?? { remove_keyboard: true }
   })
@@ -42,14 +51,15 @@ function aMensajeEntrante(u: Update): MensajeEntrante | null {
   const chatId = u.message?.chat?.id
   const texto = u.message?.text
   if (typeof chatId !== 'number' || typeof texto !== 'string') return null
-  return { chatId, texto }
+  const nombre = [u.message?.from?.first_name, u.message?.from?.last_name].filter(Boolean).join(' ').trim()
+  return { chatId, texto, usuario: nombre || 'Operario' }
 }
 
 /**
  * Inicia el bot si hay token en el entorno. Devuelve un Bot para detenerlo (o null si no hay token).
  * `env` por defecto es process.env; se inyecta en pruebas.
  */
-export function iniciarBot(env: NodeJS.ProcessEnv = process.env): Bot | null {
+export function iniciarBot(db: BaseDeDatos, env: NodeJS.ProcessEnv = process.env): Bot | null {
   const token = env[ENV_TELEGRAM_TOKEN]?.trim()
   if (!token) {
     console.warn(`[telegram] No se encontró ${ENV_TELEGRAM_TOKEN}; el chat operativo no se inicia.`)
@@ -62,6 +72,7 @@ export function iniciarBot(env: NodeJS.ProcessEnv = process.env): Bot | null {
     )
   }
 
+  const manejador = new ManejadorChat(db, autorizados)
   const control = new AbortController()
   let offset = 0
   let vivo = true
@@ -80,9 +91,11 @@ export function iniciarBot(env: NodeJS.ProcessEnv = process.env): Bot | null {
           const m = aMensajeEntrante(u)
           if (!m) continue
           try {
-            await responder(token!, decidirRespuesta(m, autorizados))
+            for (const respuesta of manejador.procesar(m.chatId, m.texto, m.usuario)) {
+              await enviar(token!, m.chatId, respuesta)
+            }
           } catch (e) {
-            console.error('[telegram] No se pudo responder un mensaje:', e)
+            console.error('[telegram] No se pudo procesar un mensaje:', e)
           }
         }
       } catch (e) {

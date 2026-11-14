@@ -43,7 +43,7 @@ async function iniciar(): Promise<void> {
     await servidor.listen({ host: API_HOST, port: API_PORT })
     // Chat operativo de Telegram (HU-10). En desarrollo lee el .env de la raíz del repositorio.
     if (!app.isPackaged) cargarEnv(join(app.getAppPath(), '..', '.env'))
-    bot = iniciarBot()
+    bot = iniciarBot(db)
   } catch (e) {
     dialog.showErrorBox('La Playa de las Mascotas', `No se pudo iniciar la aplicación.\n\n${String(e)}`)
     app.quit()
