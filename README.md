@@ -134,15 +134,6 @@ Cuatro procesos del negocio:
 
 Restricciones: costo mínimo o cero, el equipo está aprendiendo las herramientas, y el sistema debe poder instalarse en los recursos que ya tenga la tienda.
 
-### Pruebas y empaquetado
-
-| Aspecto | Valor |
-|---|---|
-| Framework de pruebas | **Vitest 4** (se ejecuta con el binario de Electron para respetar la ABI de `better-sqlite3`). |
-| Chequeo de tipos | `tsc` sobre los proyectos de Node y de la interfaz. |
-| Empaquetado | **electron-builder**: instalador NSIS para Windows x64. |
-| Integración continua | GitHub Actions (`.github/workflows/ci.yml`) en `windows-latest`: `npm ci`, `typecheck` y `test` en cada push a `main`. |
-
 ## 7. Indicadores de éxito
 
 Metas acordadas para evaluar la solución:
@@ -169,8 +160,6 @@ Metas acordadas para evaluar la solución:
 ---
 
 ## 9. Cómo ejecutar el proyecto
-
-Todo el código vive en la carpeta `desktop/`. **No hay `package.json` en la raíz del repositorio**, así que todos los comandos `npm` de esta sección (incluido `npm install`) se ejecutan **dentro de `desktop/`**. Si ves el error `Could not read package.json ... no such file or directory`, es porque estás en la raíz del repo y no en `desktop/`.
 
 ### Requisitos previos
 
@@ -215,7 +204,7 @@ Todo el código vive en la carpeta `desktop/`. **No hay `package.json` en la ra�
    cd la-playa-de-las-mascotas
    ```
 
-   Ya dentro del repositorio, entra a `desktop/` e instala (este es el paso donde falla si te quedas en la raíz):
+   Ya dentro del repositorio, entra a `desktop/` e instala:
 
    ```bash
    cd desktop
