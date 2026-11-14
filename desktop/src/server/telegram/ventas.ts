@@ -92,9 +92,15 @@ export function resolverProductos(
   return { ok: true, lineas: [...porProducto.values()] }
 }
 
-/** Resumen de la venta en texto (criterio 1): líneas con cantidad, producto, subtotal y total. */
+/** Resumen de la venta en texto (HU-11, criterio 1): líneas con cantidad, producto, subtotal y total. */
 export function resumenVenta(lineas: LineaResuelta[], money: (n: number) => string): string {
   const filas = lineas.map((l) => `• ${l.cantidad} × ${l.nombre} — ${money(l.cantidad * l.precioVenta)}`)
   const total = lineas.reduce((a, l) => a + l.cantidad * l.precioVenta, 0)
   return ['Resumen de la venta:', ...filas, '', `Total: ${money(total)}`].join('\n')
+}
+
+/** Resumen de productos sin precio, para entrada y baja (HU-12). */
+export function resumenCantidades(titulo: string, lineas: LineaResuelta[]): string {
+  const filas = lineas.map((l) => `• ${l.cantidad} × ${l.nombre}`)
+  return [titulo, ...filas].join('\n')
 }
