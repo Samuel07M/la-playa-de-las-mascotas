@@ -1,24 +1,39 @@
 // Orquesta la conversación por cada chat y ejecuta los efectos contra la base de datos.
 // Mantiene el estado de cada chat en memoria. Se prueba sin red inyectando el acceso a la BD.
-// Criterio 3 de HU-10 (autorización) sigue aquí: solo los chats autorizados avanzan la conversación.
+// Autorización (HU-10 criterio 3): solo los chats autorizados avanzan la conversación.
 
 import type { BaseDeDatos } from '../db/connection'
+import type { MetodoPago, MotivoBaja } from '../../shared/constantes'
 import { money } from '../../shared/formato'
 import { M } from '../../shared/esquemas'
 import { ErrorApi } from '../errores'
 import { registrarVenta } from '../modules/ventas'
+import { registrarEntrada } from '../modules/entradas'
+import { registrarBaja } from '../modules/bajas'
+import { stockDe } from '../modules/movimientos'
 import { listarProductos } from '../modules/productos'
 import { registrarMensaje } from '../modules/mensajes'
 import { estaAutorizado, tecladoPrincipal, type Teclado } from './logica'
-import { NO_AUTORIZADO, VENTA_NO_ENTENDIDA, ventaExito } from './textos'
-import { parsearVenta, resolverProductos, resumenVenta } from './ventas'
+import {
+  MOVIMIENTO_NO_ENTENDIDO,
+  NO_AUTORIZADO,
+  VENTA_NO_ENTENDIDA,
+  bajaExito,
+  bajaRechazada,
+  entradaExito,
+  ventaExito
+} from './textos'
+import { parsearVenta, resolverProductos, resumenCantidades, resumenVenta, type LineaResuelta } from './ventas'
 import {
   avanzar,
+  bajaRecibirLineas,
+  entradaRecibirLineas,
+  noEntendido,
   pedirConfirmacionSobreStock,
-  recibirLineas,
-  ventaNoEntendida,
-  ventaRegistrada,
+  registrado,
+  ventaRecibirLineas,
   type Estado,
+  type Operacion,
   type Salida,
   type Transicion
 } from './conversacion'
@@ -38,15 +53,6 @@ function buscarProductos(db: BaseDeDatos, q: string) {
   }))
 }
 
-/** Guarda el mensaje como "no entendido" para que Isabel lo revise (HU-15 / puntos 3 y 4 acordados). */
-function guardarPendiente(db: BaseDeDatos, texto: string, usuario: string): void {
-  registrarMensaje(db, { texto, usuario, estado: 'no_entendido' })
-}
-
-/**
- * Procesa un mensaje de un chat autorizado y devuelve las respuestas a enviar.
- * `usuario` es el nombre visible del remitente (para dejarlo en el mensaje pendiente de HU-15).
- */
 export class ManejadorChat {
   private estados = new Map<number, Estado>()
 
@@ -59,9 +65,9 @@ export class ManejadorChat {
     return this.estados.get(chatId) ?? { tipo: 'inactivo' }
   }
 
-  private aplicar(chatId: number, t: Transicion): RespuestaChat[] {
-    this.estados.set(chatId, t.estado)
-    return t.salidas.map(salidaARespuesta)
+  /** Guarda el mensaje como "no entendido" para que Isabel lo revise (HU-15 / punto 5 acordado). */
+  private guardarPendiente(texto: string, usuario: string): void {
+    registrarMensaje(this.db, { texto, usuario, estado: 'no_entendido' })
   }
 
   procesar(chatId: number, texto: string, usuario: string): RespuestaChat[] {
@@ -72,37 +78,49 @@ export class ManejadorChat {
     let estado = this.estadoDe(chatId)
     let transicion = avanzar(estado, texto)
 
-    // Resolver el efecto solicitado (puede encadenar: parsear → resumen o pendiente).
     while (transicion.efecto) {
       const efecto = transicion.efecto
-      if (efecto.tipo === 'parsear_venta') {
-        transicion = this.manejarParseo(efecto.texto, usuario)
-      } else if (efecto.tipo === 'registrar_venta') {
-        transicion = this.manejarRegistro(estado, efecto)
+      switch (efecto.tipo) {
+        case 'parsear':
+          transicion = this.manejarParseo(efecto.operacion, efecto.texto, usuario)
+          break
+        case 'registrar_venta':
+          transicion = this.registrarVenta(estado, efecto)
+          break
+        case 'registrar_entrada':
+          transicion = this.registrarEntrada(efecto)
+          break
+        case 'registrar_baja':
+          transicion = this.registrarBaja(efecto)
+          break
       }
       estado = transicion.estado
     }
 
-    return this.aplicar(chatId, transicion)
+    this.estados.set(chatId, transicion.estado)
+    return transicion.salidas.map(salidaARespuesta)
   }
 
-  private manejarParseo(texto: string, usuario: string): Transicion {
+  private manejarParseo(operacion: Operacion, texto: string, usuario: string): Transicion {
+    const avisoNoEntendido = operacion === 'venta' ? VENTA_NO_ENTENDIDA : MOVIMIENTO_NO_ENTENDIDO
     const parseo = parsearVenta(texto)
     if (!parseo.ok) {
-      guardarPendiente(this.db, texto, usuario)
-      return ventaNoEntendida(VENTA_NO_ENTENDIDA)
+      this.guardarPendiente(texto, usuario)
+      return noEntendido(avisoNoEntendido)
     }
     const resuelto = resolverProductos(this.db, parseo.partes, buscarProductos)
     if (!resuelto.ok) {
-      guardarPendiente(this.db, texto, usuario)
-      return ventaNoEntendida(VENTA_NO_ENTENDIDA)
+      this.guardarPendiente(texto, usuario)
+      return noEntendido(avisoNoEntendido)
     }
-    return recibirLineas(resuelto.lineas, resumenVenta(resuelto.lineas, money))
+    if (operacion === 'entrada') return entradaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la entrada:', resuelto.lineas))
+    if (operacion === 'baja') return bajaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la baja:', resuelto.lineas))
+    return ventaRecibirLineas(resuelto.lineas, resumenVenta(resuelto.lineas, money))
   }
 
-  private manejarRegistro(
+  private registrarVenta(
     estado: Estado,
-    efecto: { lineas: { productoId: number; cantidad: number }[]; metodoPago: 'efectivo' | 'digital'; confirmarSobreStock: boolean }
+    efecto: { lineas: LineaResuelta[]; metodoPago: MetodoPago; confirmarSobreStock: boolean }
   ): Transicion {
     try {
       const venta = registrarVenta(this.db, {
@@ -110,15 +128,36 @@ export class ManejadorChat {
         lineas: efecto.lineas.map((l) => ({ productoId: l.productoId, cantidad: l.cantidad })),
         confirmarSobreStock: efecto.confirmarSobreStock
       })
-      return ventaRegistrada(ventaExito(venta.consecutivo, money(venta.total)))
+      return registrado(ventaExito(venta.consecutivo, money(venta.total)))
     } catch (e) {
-      // 409 = la venta supera el stock: se advierte y se pide una segunda confirmación (punto 5).
-      if (e instanceof ErrorApi && e.status === 409 && estado.tipo === 'esperando_confirmacion') {
+      // 409 = la venta supera el stock: se advierte y se pide una segunda confirmación (HU-11, punto 5).
+      if (e instanceof ErrorApi && e.status === 409 && estado.tipo === 'confirmar_venta') {
         const productos = (e.extra?.productos as string[] | undefined) ?? []
         return pedirConfirmacionSobreStock(estado, M.sobreStock(productos))
       }
       throw e
     }
+  }
+
+  private registrarEntrada(efecto: { lineas: LineaResuelta[]; referencia: string }): Transicion {
+    const r = registrarEntrada(this.db, {
+      referencia: efecto.referencia,
+      lineas: efecto.lineas.map((l) => ({ productoId: l.productoId, cantidad: l.cantidad }))
+    })
+    return registrado(entradaExito(r.referencia, r.productos))
+  }
+
+  private registrarBaja(efecto: { lineas: LineaResuelta[]; motivo: MotivoBaja }): Transicion {
+    // Punto 4 acordado: la baja que supera el stock se rechaza, sin registrar ninguna de las líneas.
+    // Se valida todo antes de escribir; registrarBaja además es transaccional por línea.
+    for (const l of efecto.lineas) {
+      const stock = stockDe(this.db, l.productoId)
+      if (l.cantidad > stock) return registrado(bajaRechazada(l.nombre, stock))
+    }
+    for (const l of efecto.lineas) {
+      registrarBaja(this.db, { productoId: l.productoId, cantidad: l.cantidad, motivo: efecto.motivo })
+    }
+    return registrado(bajaExito(efecto.lineas.length))
   }
 }
 

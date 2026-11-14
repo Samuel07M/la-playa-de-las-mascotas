@@ -139,17 +139,6 @@ describe('HU-11 · Flujo de conversación', () => {
     expect(stockDe(db, chow)).toBe(10)
   })
 
-  it('los botones de HU-12/HU-13 avisan que no están disponibles y NO se guardan como pendientes', () => {
-    const { db } = tiendaConChow()
-    const chat = new ManejadorChat(db, AUTORIZADOS)
-    for (const boton of ['Registrar entrada', 'Registrar baja']) {
-      const r = chat.procesar(CHAT, boton, 'Alirio')
-      expect(r.map((x) => x.texto).join('\n')).toContain('todavía no está disponible')
-    }
-    // No deben ensuciar la bandeja de mensajes no entendidos de Isabel.
-    expect(listarNoEntendidos(db, true)).toHaveLength(0)
-  })
-
   it('HU-10 C3 se mantiene: un chat no autorizado no avanza la conversación', () => {
     const { db } = tiendaConChow()
     const chat = new ManejadorChat(db, AUTORIZADOS)
