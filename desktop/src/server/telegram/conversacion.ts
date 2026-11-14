@@ -152,6 +152,10 @@ export function avanzar(estado: Estado, texto: string): Transicion {
     }
 
     case 'esperando_productos': {
+      // Un botón del menú principal no es una lista de productos: reinicia esa operación (vuelve a
+      // enviar las instrucciones) en vez de tomarse como mensaje no entendido. Pasa si el operario
+      // no vio la respuesta anterior y sigue viendo el menú principal.
+      if (t === BOTON_VENTA || t === BOTON_ENTRADA || t === BOTON_BAJA) return avanzar({ tipo: 'inactivo' }, t)
       // El texto se interpreta fuera (necesita la BD): se pide el efecto y el bot vuelve con recibirLineas.
       return { estado, salidas: [], efecto: { tipo: 'parsear', operacion: estado.operacion, texto: t } }
     }

@@ -39,12 +39,40 @@ async function llamar<T>(token: string, metodo: string, cuerpo: unknown, signal?
   return datos.result as T
 }
 
+/** Tiempo máximo de una llamada a Telegram. getUpdates espera hasta 25 s del lado de Telegram. */
+const ESPERA_ENVIO_MS = 15_000
+const ESPERA_SONDEO_MS = 40_000
+
+/**
+ * Ejecuta `fn` y, si falla (red caída, timeout, error de Telegram), la reintenta tras una pausa.
+ * Antes, una falla al enviar se perdía en silencio: la conversación ya había avanzado de estado
+ * pero el operario no veía la respuesta (p. ej. «Vamos a registrar una venta…»).
+ */
+export async function conReintentos<T>(
+  fn: () => Promise<T>,
+  pausasMs: readonly number[] = [1000, 3000],
+  dormir: (ms: number) => Promise<void> = (ms) => new Promise((res) => setTimeout(res, ms))
+): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn()
+    } catch (e) {
+      if (i >= pausasMs.length) throw e
+      console.warn(`[telegram] Falló una llamada a Telegram; reintento ${i + 1} de ${pausasMs.length}:`, e)
+      await dormir(pausasMs[i])
+    }
+  }
+}
+
 async function enviar(token: string, chatId: number, r: RespuestaChat): Promise<void> {
-  await llamar(token, 'sendMessage', {
-    chat_id: chatId,
-    text: r.texto,
-    reply_markup: r.teclado ?? { remove_keyboard: true }
-  })
+  await conReintentos(() =>
+    llamar(
+      token,
+      'sendMessage',
+      { chat_id: chatId, text: r.texto, reply_markup: r.teclado ?? { remove_keyboard: true } },
+      AbortSignal.timeout(ESPERA_ENVIO_MS)
+    )
+  )
 }
 
 function aMensajeEntrante(u: Update): MensajeEntrante | null {
@@ -84,7 +112,8 @@ export function iniciarBot(db: BaseDeDatos, env: NodeJS.ProcessEnv = process.env
           token!,
           'getUpdates',
           { offset, timeout: 25, allowed_updates: ['message'] },
-          control.signal
+          // Si la conexión se cae sin aviso, el sondeo no se queda colgado para siempre.
+          AbortSignal.any([control.signal, AbortSignal.timeout(ESPERA_SONDEO_MS)])
         )
         for (const u of updates) {
           offset = u.update_id + 1
@@ -95,7 +124,7 @@ export function iniciarBot(db: BaseDeDatos, env: NodeJS.ProcessEnv = process.env
               await enviar(token!, m.chatId, respuesta)
             }
           } catch (e) {
-            console.error('[telegram] No se pudo procesar un mensaje:', e)
+            console.error(`[telegram] No se pudo procesar o responder «${m.texto}»:`, e)
           }
         }
       } catch (e) {

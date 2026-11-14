@@ -8,14 +8,20 @@ import { ManejadorChat } from '../telegram/manejador'
 import { listarProductos } from '../modules/productos'
 import type { BaseDeDatos } from '../db/connection'
 import {
+  BAJA_PEDIR,
+  BOTON_BAJA,
   BOTON_CANCELAR,
   BOTON_CONFIRMAR,
   BOTON_EFECTIVO,
+  BOTON_ENTRADA,
   BOTON_VENTA,
+  ENTRADA_PEDIR,
   VENTA_CANCELADA,
   VENTA_NO_ENTENDIDA,
+  VENTA_PEDIR,
   VENTA_PEDIR_PAGO
 } from '../telegram/textos'
+import { conReintentos } from '../telegram/bot'
 import { tecladoPrincipal } from '../telegram/logica'
 import { registrarVenta } from '../modules/ventas'
 
@@ -180,5 +186,64 @@ describe('HU-11 · Flujo de conversación', () => {
     const r = chat.procesar(999, BOTON_VENTA, 'Intruso')
     expect(r).toHaveLength(1)
     expect(r[0].teclado).toBeUndefined()
+  })
+})
+
+describe('HU-11 · Respuesta perdida tras confirmar una venta (error reportado el 14/11/2026)', () => {
+  it('tocar «Registrar venta» mientras espera los productos reinicia la venta, no la toma como no entendida', () => {
+    const { db, chow } = tiendaConChow()
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    chat.procesar(CHAT, '2 dog chow', 'Alirio')
+    chat.procesar(CHAT, BOTON_EFECTIVO, 'Alirio')
+    chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
+    // Primer toque: el bot queda esperando los productos (supongamos que la respuesta no se vio).
+    chat.procesar(CHAT, BOTON_VENTA, 'Alirio')
+    // Segundo toque del mismo botón: vuelve a enviar las instrucciones.
+    const r = chat.procesar(CHAT, BOTON_VENTA, 'Alirio')
+    expect(r.map((x) => x.texto).join('\n')).toBe(VENTA_PEDIR)
+    expect(listarNoEntendidos(db, true)).toHaveLength(0)
+    // Y la venta sigue normalmente.
+    chat.procesar(CHAT, '1 dog chow', 'Alirio')
+    chat.procesar(CHAT, BOTON_EFECTIVO, 'Alirio')
+    chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
+    expect(stockDe(db, chow)).toBe(7)
+  })
+
+  it('los otros botones del menú también cambian de operación mientras se esperan productos', () => {
+    const { db } = tiendaConChow()
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    chat.procesar(CHAT, BOTON_VENTA, 'Olga')
+    expect(chat.procesar(CHAT, BOTON_ENTRADA, 'Olga').map((x) => x.texto).join('\n')).toBe(ENTRADA_PEDIR)
+    expect(chat.procesar(CHAT, BOTON_BAJA, 'Olga').map((x) => x.texto).join('\n')).toBe(BAJA_PEDIR)
+    expect(listarNoEntendidos(db, true)).toHaveLength(0)
+  })
+
+  it('el envío a Telegram se reintenta si falla, en vez de perder la respuesta', async () => {
+    let llamadas = 0
+    const pausas: number[] = []
+    const r = await conReintentos(
+      async () => {
+        llamadas++
+        if (llamadas < 3) throw new Error('fetch failed')
+        return 'ok'
+      },
+      [1000, 3000],
+      async (ms) => {
+        pausas.push(ms)
+      }
+    )
+    expect(r).toBe('ok')
+    expect(llamadas).toBe(3)
+    expect(pausas).toEqual([1000, 3000])
+  })
+
+  it('si sigue fallando tras los reintentos, lanza el error (queda en el registro)', async () => {
+    let llamadas = 0
+    const fallar = async (): Promise<never> => {
+      llamadas++
+      throw new Error('fetch failed')
+    }
+    await expect(conReintentos(fallar, [1, 1], async () => {})).rejects.toThrow('fetch failed')
+    expect(llamadas).toBe(3)
   })
 })
