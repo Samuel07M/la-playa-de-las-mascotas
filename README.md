@@ -114,7 +114,7 @@ Cuatro procesos del negocio:
 - **Stock = entradas − ventas − bajas.** Esta invariante debe cumplirse siempre; el sistema la muestra y verifica.
 - Cada venta descuenta stock automáticamente.
 - Tres tipos de movimiento: `venta`, `entrada`, `baja`. Cada uno guarda usuario y fecha.
-- Una venta que supera el stock disponible **no se bloquea**: se advierte y se exige confirmación explícita (el stock real a veces no coincide con el registrado).
+- Una venta que supera el stock disponible **se rechaza** (igual que las bajas): no se registra ninguna línea y se indica el stock disponible de cada producto. El stock nunca puede quedar negativo. Las cantidades del mismo producto repetido en varias líneas se suman antes de comparar.
 - Una baja que supera el stock actual **sí se rechaza**.
 - Las bajas requieren un motivo: `vencido`, `dañado` u `otro`.
 - Las entradas requieren referencia de factura o remisión; una recepción puede incluir varios productos con la misma referencia.

@@ -24,7 +24,7 @@ Si dos fuentes se contradicen, o algo no está definido: **detente y pregunta**.
 ## Reglas de negocio que nunca se rompen
 - Stock = entradas − ventas − bajas. El stock **se calcula** desde `movimientos`; no existe una columna de stock.
 - Los movimientos **nunca se borran ni se editan**. Productos y proveedores se desactivan, no se eliminan.
-- Venta que supera el stock: se advierte y se exige confirmación (no se bloquea). Baja que supera el stock: se rechaza.
+- Venta que supera el stock: se rechaza (sin confirmación «de todos modos»). Baja que supera el stock: se rechaza. El stock nunca queda negativo.
 - Baja requiere motivo (`vencido`, `dañado`, `otro`). Entrada requiere referencia. Cantidades: enteros > 0. Precio > 0.
 - Alias únicos sin distinguir mayúsculas/minúsculas.
 - **Toda validación se hace en la API** (Zod), además de la interfaz.

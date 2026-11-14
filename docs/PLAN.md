@@ -140,7 +140,7 @@ mensajes         (id, texto, usuario, fecha, estado ∈ {confirmado,corregido,no
 |---|---|---|
 | 01 | `GET /productos?q=` · `POST /productos` · `PUT /productos/:id` · `PATCH /productos/:id/activo` | La búsqueda incluye alias e indica cuál alias coincidió |
 | 02 | `POST /productos/:id/alias` · `DELETE /alias/:id` | 409 con «Ese alias ya pertenece a «X».» |
-| 03 | `POST /ventas` | Si alguna línea supera el stock y no viene `confirmarSobreStock: true`, responde 409 con la lista de productos afectados |
+| 03 | `POST /ventas` | Si alguna línea (sumando las repetidas del mismo producto) supera el stock, responde 400 con la lista de productos y su stock disponible, y no registra ninguna línea (cambio del 14/11/2026, PREGUNTAS 34) |
 | 04 | `POST /entradas` · `GET /entradas/recientes` | Varias líneas con una misma referencia; excluye `INV-INICIAL` |
 | 05 | `POST /bajas` · `GET /bajas` · `GET /bajas/resumen` | Rechaza si la cantidad supera el stock; resumen por motivo valorado a precio de venta |
 | 06 | `GET /inventario` · `GET /movimientos?productoId&desde&hasta` · `GET /inventario/:id/verificacion` | Productos bajo el mínimo primero |
@@ -232,7 +232,7 @@ Fase 1 de docs/PLAN.md.
    inicial (INV-INICIAL), la venta V-000 y la baja del mockup (función seed()). El seed solo corre
    con `npm run seed`, nunca solo en la instalación de la tienda.
 3) Pruebas: invariante de stock, una baja que supera el stock es rechazada, una venta que supera
-   el stock sin confirmación devuelve conflicto y con confirmación se registra.
+   el stock se rechaza y no crea movimientos (cambio del 14/11/2026, PREGUNTAS 34).
 4) Armazón de React: copia el CSS del mockup tal cual a styles.css, el menú lateral (logo
    extraído del base64 del mockup, "Menú", ítems con sus íconos SVG, pie "Isabel Torres /
    Administradora"), y los componentes Modal, Toast y ask() con el mismo comportamiento.
