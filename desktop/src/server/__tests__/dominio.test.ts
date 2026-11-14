@@ -65,7 +65,7 @@ describe('Baja que supera el stock', () => {
 })
 
 describe('Venta que supera el stock', () => {
-  it('sin confirmación devuelve conflicto con los productos afectados', () => {
+  it('se rechaza (400) con los productos y su disponible, sin crear movimientos', () => {
     const db = nuevaDb()
     const id = productoCon(db, 2, { nombre: 'Concentrado Gatsy Gatos 3kg' })
     try {
@@ -73,21 +73,38 @@ describe('Venta que supera el stock', () => {
       expect.unreachable()
     } catch (e) {
       const err = e as ErrorApi
-      expect(err.status).toBe(409)
-      expect(err.extra).toEqual({ productos: ['Concentrado Gatsy Gatos 3kg'] })
+      expect(err.status).toBe(400)
+      expect(err.message).toBe('No hay stock suficiente de: Concentrado Gatsy Gatos 3kg (disponible: 2). No se registró la venta.')
+      expect(err.extra).toEqual({ productos: [{ nombre: 'Concentrado Gatsy Gatos 3kg', disponible: 2 }] })
     }
     expect(stockDe(db, id)).toBe(2)
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM movimientos WHERE tipo = 'venta'`).get()).toEqual({ n: 0 })
   })
 
-  it('con confirmación se registra (el stock puede quedar negativo)', () => {
+  it('el stock nunca queda negativo: stock = entradas − ventas − bajas y stock ≥ 0', () => {
     const db = nuevaDb()
-    const id = productoCon(db, 2)
-    registrarVenta(db, {
-      metodoPago: 'digital',
-      lineas: [{ productoId: id, cantidad: 3 }],
-      confirmarSobreStock: true
-    })
-    expect(stockDe(db, id)).toBe(-1)
+    const id = productoCon(db, 5)
+    const intentos: [string, () => unknown][] = [
+      ['venta 3', () => registrarVenta(db, { metodoPago: 'efectivo', lineas: [{ productoId: id, cantidad: 3 }] })],
+      ['venta 3 (supera)', () => registrarVenta(db, { metodoPago: 'efectivo', lineas: [{ productoId: id, cantidad: 3 }] })],
+      ['baja 1', () => registrarBaja(db, { productoId: id, cantidad: 1, motivo: 'dañado' })],
+      ['venta 1+1 (supera)', () => registrarVenta(db, { metodoPago: 'digital', lineas: [{ productoId: id, cantidad: 1 }, { productoId: id, cantidad: 1 }] })],
+      ['venta 1', () => registrarVenta(db, { metodoPago: 'digital', lineas: [{ productoId: id, cantidad: 1 }] })],
+      ['venta 1 (supera)', () => registrarVenta(db, { metodoPago: 'digital', lineas: [{ productoId: id, cantidad: 1 }] })]
+    ]
+    for (const [, intento] of intentos) {
+      try {
+        intento()
+      } catch (e) {
+        expect((e as ErrorApi).status).toBe(400)
+      }
+      const suma = (tipo: string) =>
+        (db.prepare(`SELECT COALESCE(SUM(cantidad), 0) AS n FROM movimientos WHERE producto_id = ? AND tipo = ?`).get(id, tipo) as { n: number }).n
+      const stock = stockDe(db, id)
+      expect(stock).toBe(suma('entrada') - suma('venta') - suma('baja'))
+      expect(stock).toBeGreaterThanOrEqual(0)
+    }
+    expect(stockDe(db, id)).toBe(0)
   })
 })
 

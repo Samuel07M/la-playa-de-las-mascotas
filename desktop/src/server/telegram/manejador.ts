@@ -7,7 +7,7 @@ import type { MetodoPago, MotivoBaja } from '../../shared/constantes'
 import { money } from '../../shared/formato'
 import { M } from '../../shared/esquemas'
 import { ErrorApi } from '../errores'
-import { registrarVenta } from '../modules/ventas'
+import { faltantesDeStock, registrarVenta } from '../modules/ventas'
 import { registrarEntrada } from '../modules/entradas'
 import { registrarBaja } from '../modules/bajas'
 import { stockDe } from '../modules/movimientos'
@@ -29,8 +29,8 @@ import {
   bajaRecibirLineas,
   entradaRecibirLineas,
   noEntendido,
-  pedirConfirmacionSobreStock,
   registrado,
+  ventaRechazada,
   ventaRecibirLineas,
   type Estado,
   type Operacion,
@@ -85,7 +85,7 @@ export class ManejadorChat {
           transicion = this.manejarParseo(efecto.operacion, efecto.texto, usuario)
           break
         case 'registrar_venta':
-          transicion = this.registrarVenta(estado, efecto)
+          transicion = this.registrarVenta(efecto)
           break
         case 'registrar_entrada':
           transicion = this.registrarEntrada(efecto)
@@ -115,26 +115,24 @@ export class ManejadorChat {
     }
     if (operacion === 'entrada') return entradaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la entrada:', resuelto.lineas))
     if (operacion === 'baja') return bajaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la baja:', resuelto.lineas))
+    // Venta: el stock se verifica justo después de resolver los productos, antes del resumen y del
+    // método de pago. Si algún producto no alcanza, se rechaza (no es "no entendido": no se guarda).
+    const faltantes = faltantesDeStock(this.db, resuelto.lineas)
+    if (faltantes.length) return ventaRechazada(M.ventaSinStock(faltantes))
     return ventaRecibirLineas(resuelto.lineas, resumenVenta(resuelto.lineas, money))
   }
 
-  private registrarVenta(
-    estado: Estado,
-    efecto: { lineas: LineaResuelta[]; metodoPago: MetodoPago; confirmarSobreStock: boolean }
-  ): Transicion {
+  private registrarVenta(efecto: { lineas: LineaResuelta[]; metodoPago: MetodoPago }): Transicion {
     try {
       const venta = registrarVenta(this.db, {
         metodoPago: efecto.metodoPago,
-        lineas: efecto.lineas.map((l) => ({ productoId: l.productoId, cantidad: l.cantidad })),
-        confirmarSobreStock: efecto.confirmarSobreStock
+        lineas: efecto.lineas.map((l) => ({ productoId: l.productoId, cantidad: l.cantidad }))
       })
       return registrado(ventaExito(venta.consecutivo, money(venta.total)))
     } catch (e) {
-      // 409 = la venta supera el stock: se advierte y se pide una segunda confirmación (HU-11, punto 5).
-      if (e instanceof ErrorApi && e.status === 409 && estado.tipo === 'confirmar_venta') {
-        const productos = (e.extra?.productos as string[] | undefined) ?? []
-        return pedirConfirmacionSobreStock(estado, M.sobreStock(productos))
-      }
+      // Respaldo: el backend vuelve a verificar el stock al confirmar (pudo cambiar mientras se
+      // elegía el pago, p. ej. una venta en la app). Si ya no alcanza, la venta se rechaza.
+      if (e instanceof ErrorApi && e.status === 400 && e.extra?.productos) return ventaRechazada(e.message)
       throw e
     }
   }

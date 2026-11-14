@@ -13,8 +13,11 @@ import {
   BOTON_EFECTIVO,
   BOTON_VENTA,
   VENTA_CANCELADA,
-  VENTA_NO_ENTENDIDA
+  VENTA_NO_ENTENDIDA,
+  VENTA_PEDIR_PAGO
 } from '../telegram/textos'
+import { tecladoPrincipal } from '../telegram/logica'
+import { registrarVenta } from '../modules/ventas'
 
 const CHAT = 111
 const AUTORIZADOS = [CHAT]
@@ -116,27 +119,59 @@ describe('HU-11 · Flujo de conversación', () => {
     expect(listarNoEntendidos(db, true)).toHaveLength(1)
   })
 
-  it('C/HU-03: venta sobre stock pide una segunda confirmación y, al confirmar, se registra', () => {
+  it('C/HU-03: venta que supera el stock se RECHAZA antes del resumen y de pedir el método de pago', () => {
     const { db, chow } = tiendaConChow() // stock 10
     const chat = new ManejadorChat(db, AUTORIZADOS)
-    chat.procesar(CHAT, '15 dog chow', 'Alirio')
+    const r = chat.procesar(CHAT, '15 dog chow', 'Alirio')
+    const texto = r.map((x) => x.texto).join('\n')
+    expect(texto).toBe('No hay stock suficiente de: Concentrado Dog Chow Adulto 8kg (disponible: 10). No se registró la venta.')
+    expect(texto).not.toContain('Resumen de la venta')
+    expect(texto).not.toContain(VENTA_PEDIR_PAGO)
+    // Vuelve al teclado principal (sin botones Efectivo/Digital) y a inactivo.
+    expect(r.at(-1)!.teclado).toEqual(tecladoPrincipal())
+    expect(stockDe(db, chow)).toBe(10)
+    // No es un mensaje "no entendido": no se guarda como pendiente.
+    expect(listarNoEntendidos(db, true)).toHaveLength(0)
+    // Pulsar Efectivo después no continúa ninguna venta.
     chat.procesar(CHAT, BOTON_EFECTIVO, 'Alirio')
-    const aviso = chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
-    expect(aviso.map((x) => x.texto).join('\n')).toContain('superan el stock')
-    expect(stockDe(db, chow)).toBe(10) // todavía no se tocó
-    const ok = chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
-    expect(ok.map((x) => x.texto).join('\n')).toContain('registrada')
-    expect(stockDe(db, chow)).toBe(-5)
+    chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
+    expect(stockDe(db, chow)).toBe(10)
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM ventas`).get()).toEqual({ n: 0 })
   })
 
-  it('C3 sobre stock: si cancela tras el aviso, el stock no se modifica', () => {
+  it('C/HU-03: el rechazo indica el disponible de cada producto que no alcanza', () => {
+    const { db } = tiendaConChow()
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    const r = chat.procesar(CHAT, '11 dog chow y 12 collar', 'Olga')
+    expect(r.map((x) => x.texto).join('\n')).toBe(
+      'No hay stock suficiente de: Concentrado Dog Chow Adulto 8kg (disponible: 10), Collar para perro (disponible: 10). No se registró la venta.'
+    )
+  })
+
+  it('C/HU-03: el mismo producto en dos partes que juntas superan el stock se rechaza', () => {
     const { db, chow } = tiendaConChow()
     const chat = new ManejadorChat(db, AUTORIZADOS)
-    chat.procesar(CHAT, '15 dog chow', 'Olga')
-    chat.procesar(CHAT, BOTON_EFECTIVO, 'Olga')
-    chat.procesar(CHAT, BOTON_CONFIRMAR, 'Olga')
-    chat.procesar(CHAT, BOTON_CANCELAR, 'Olga')
+    const r = chat.procesar(CHAT, '6 dog chow y 5 dog chow', 'Olga')
+    expect(r.map((x) => x.texto).join('\n')).toContain('No hay stock suficiente de: Concentrado Dog Chow Adulto 8kg (disponible: 10)')
     expect(stockDe(db, chow)).toBe(10)
+  })
+
+  it('respaldo del backend: si el stock cambió antes de confirmar, la venta se rechaza al confirmar', () => {
+    const { db, chow } = tiendaConChow()
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    chat.procesar(CHAT, '8 dog chow', 'Alirio')
+    chat.procesar(CHAT, BOTON_EFECTIVO, 'Alirio')
+    // Mientras tanto, Isabel vende 5 en la app: quedan 5.
+    registrarVenta(db, { metodoPago: 'digital', lineas: [{ productoId: chow, cantidad: 5 }] })
+    const r = chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
+    expect(r.map((x) => x.texto).join('\n')).toBe(
+      'No hay stock suficiente de: Concentrado Dog Chow Adulto 8kg (disponible: 5). No se registró la venta.'
+    )
+    expect(r.at(-1)!.teclado).toEqual(tecladoPrincipal())
+    expect(stockDe(db, chow)).toBe(5)
+    // La conversación quedó inactiva: otro Confirmar no registra nada.
+    chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
+    expect(stockDe(db, chow)).toBe(5)
   })
 
   it('HU-10 C3 se mantiene: un chat no autorizado no avanza la conversación', () => {

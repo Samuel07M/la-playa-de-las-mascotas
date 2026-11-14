@@ -15,10 +15,11 @@ export const M = {
   productoBaja: 'Selecciona un producto.',
   motivoBaja: 'Debes seleccionar un motivo para guardar.',
   bajaSuperaStock: (stock: number) => `La cantidad supera el stock actual (${stock}).`,
-  sobreStock: (productos: string[]) =>
-    'Estos productos superan el stock disponible: ' +
-    productos.join(', ') +
-    '. ¿Confirmas la venta de todos modos?',
+  /** Venta rechazada por falta de stock (cambio pedido por Samuel, docs/PREGUNTAS.md 34). */
+  ventaSinStock: (productos: { nombre: string; disponible: number }[]) =>
+    'No hay stock suficiente de: ' +
+    productos.map((p) => `${p.nombre} (disponible: ${p.disponible})`).join(', ') +
+    '. No se registró la venta.',
   // HU-07, HU-08, HU-09 y HU-15 no tienen mockup: textos propuestos (docs/PREGUNTAS.md, 24).
   correo: 'Escribe un correo válido.',
   proveedorActivo: 'Selecciona un proveedor activo.',
@@ -53,8 +54,7 @@ export const ventaSchema = z.object({
   metodoPago: z.enum(METODOS_PAGO),
   lineas: z
     .array(z.object({ productoId: id(M.productoExistente), cantidad }))
-    .min(1, M.productoExistente),
-  confirmarSobreStock: z.boolean().optional()
+    .min(1, M.productoExistente)
 })
 export type VentaEntrada = z.infer<typeof ventaSchema>
 

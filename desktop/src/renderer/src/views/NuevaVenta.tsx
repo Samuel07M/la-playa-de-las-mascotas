@@ -1,6 +1,5 @@
 // HU-03 — Nueva venta (vSale, grid, cartR, sell, doSell del mockup).
 import { useState } from 'react'
-import { M } from '@shared/esquemas'
 import { money } from '@shared/formato'
 import type { MetodoPago } from '@shared/constantes'
 import type { Producto, VentaRegistrada } from '@shared/tipos'
@@ -21,7 +20,7 @@ const PAGOS: [MetodoPago, string][] = [
 ]
 
 export default function NuevaVenta() {
-  const { ask, toast, huboCambios } = useUi()
+  const { toast, huboCambios } = useUi()
   const productos = usarDatos<Producto[]>('/productos')
   const [sq, setSq] = useMemoria('sale.sq', '')
   const [cart, setCart] = useMemoria<Linea[]>('sale.cart', [])
@@ -41,6 +40,8 @@ export default function NuevaVenta() {
         !s || (p.nombre + ' ' + p.categoria + ' ' + p.alias.map((a) => a.texto).join(' ')).toLowerCase().includes(s)
     )
   const lineas = cart.filter((r) => prod(r.pid))
+  // Venta que supera el stock: se rechaza (no se puede confirmar mientras alguna línea lo supere).
+  const superaStock = lineas.some((r) => r.q > prod(r.pid)!.stock)
   const tot = totalVenta(lineas.map((r) => ({ cantidad: r.q, precio: prod(r.pid)!.precioVenta })))
 
   function add(id: number) {
@@ -56,14 +57,13 @@ export default function NuevaVenta() {
     if (!c.length) setT0(null)
   }
 
-  async function doSell(confirmar: boolean) {
-    if (enviando) return
+  async function doSell() {
+    if (enviando || superaStock) return
     setEnviando(true)
     try {
       const v = await api.post<VentaRegistrada>('/ventas', {
         metodoPago: pay,
-        lineas: cart.map((r) => ({ productoId: r.pid, cantidad: r.q })),
-        confirmarSobreStock: confirmar
+        lineas: cart.map((r) => ({ productoId: r.pid, cantidad: r.q }))
       })
       const t = cronometro(t0)
       setCart([])
@@ -72,9 +72,9 @@ export default function NuevaVenta() {
       huboCambios()
     } catch (e) {
       const x = e as ErrorDeApi
-      // Supera el stock: se advierte y se exige confirmación (no se bloquea).
-      if (x.status === 409 && x.productos) ask(M.sobreStock(x.productos), () => doSell(true))
-      else toast(x.message, true)
+      toast(x.message, true)
+      // 400 por stock (otra venta pudo descontarlo): se recarga el stock para marcar las líneas.
+      if (x.status === 400 && x.productos) huboCambios()
     } finally {
       setEnviando(false)
     }
@@ -171,8 +171,8 @@ export default function NuevaVenta() {
           <button
             className="b pri"
             style={{ width: '100%', padding: 12 }}
-            disabled={!cart.length}
-            onClick={() => doSell(false)}
+            disabled={!cart.length || superaStock || enviando}
+            onClick={() => doSell()}
           >
             Confirmar venta
           </button>

@@ -2,7 +2,7 @@ import type { BaseDeDatos } from '../db/connection'
 import { USUARIO } from '../../shared/constantes'
 import type { FastifyInstance } from 'fastify'
 import { M, ventaSchema, type VentaEntrada } from '../../shared/esquemas'
-import type { VentaRegistrada } from '../../shared/tipos'
+import type { ProductoSinStock, VentaRegistrada } from '../../shared/tipos'
 import { ErrorApi, validar } from '../errores'
 import { registrarMovimiento, stockDe } from './movimientos'
 import { exigirActivo } from './productos'
@@ -16,9 +16,28 @@ export function siguienteConsecutivo(db: BaseDeDatos): string {
 }
 
 /**
+ * Productos cuya cantidad pedida supera el stock actual, con su stock disponible.
+ * Suma las líneas repetidas del mismo producto antes de comparar.
+ */
+export function faltantesDeStock(
+  db: BaseDeDatos,
+  lineas: { productoId: number; cantidad: number }[]
+): ProductoSinStock[] {
+  const pedido = new Map<number, number>()
+  lineas.forEach((l) => pedido.set(l.productoId, (pedido.get(l.productoId) ?? 0) + l.cantidad))
+  const nombre = db.prepare(`SELECT nombre FROM productos WHERE id = ?`)
+  return [...pedido].flatMap(([id, q]) => {
+    const disponible = stockDe(db, id)
+    if (q <= disponible) return []
+    return [{ nombre: (nombre.get(id) as { nombre: string }).nombre, disponible }]
+  })
+}
+
+/**
  * Registra una venta: un movimiento "venta" por línea, con el precio vigente.
- * Si alguna línea supera el stock y no viene confirmarSobreStock, lanza 409 con la
- * lista de productos afectados (no se bloquea: se exige confirmación).
+ * Si alguna línea (sumando las repetidas) supera el stock, la venta se RECHAZA con 400 y no
+ * se registra ninguna línea: el stock nunca queda negativo. La verificación se hace dentro de la
+ * misma transacción del registro.
  */
 export function registrarVenta(
   db: BaseDeDatos,
@@ -29,14 +48,9 @@ export function registrarVenta(
     const productos = v.lineas.map((l, i) =>
       exigirActivo(db, l.productoId, M.productoExistente, `lineas.${i}.productoId`)
     )
-    // Cantidad total pedida por producto (por si un producto viene en varias líneas).
-    const pedido = new Map<number, number>()
-    v.lineas.forEach((l) => pedido.set(l.productoId, (pedido.get(l.productoId) ?? 0) + l.cantidad))
-    const superan = [...pedido]
-      .filter(([id, q]) => q > stockDe(db, id))
-      .map(([id]) => productos.find((p) => p.id === id)!.nombre)
-    if (superan.length && !v.confirmarSobreStock) {
-      throw new ErrorApi(409, M.sobreStock(superan), undefined, { productos: superan })
+    const faltantes = faltantesDeStock(db, v.lineas)
+    if (faltantes.length) {
+      throw new ErrorApi(400, M.ventaSinStock(faltantes), undefined, { productos: faltantes })
     }
     const fecha = opciones.fecha ?? new Date().toISOString()
     const consecutivo = opciones.consecutivo ?? siguienteConsecutivo(db)

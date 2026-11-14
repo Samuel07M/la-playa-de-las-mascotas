@@ -66,8 +66,14 @@ export interface VentaRegistrada {
   total: number
 }
 
+/** Producto que no alcanza para una venta, con su stock disponible. */
+export interface ProductoSinStock {
+  nombre: string
+  disponible: number
+}
+
 export interface ErrorRespuesta {
-  error: { campo?: string; mensaje: string; productos?: string[] }
+  error: { campo?: string; mensaje: string; productos?: ProductoSinStock[] }
 }
 
 // HU-07

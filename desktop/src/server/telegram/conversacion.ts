@@ -48,8 +48,8 @@ export type Estado =
   | { tipo: 'esperando_referencia'; lineas: LineaResuelta[] }
   /** Baja: se mostró el resumen; espera el motivo (botones). */
   | { tipo: 'esperando_motivo'; lineas: LineaResuelta[] }
-  /** Venta lista; espera Confirmar/Cancelar (con o sin aviso de sobre-stock). */
-  | { tipo: 'confirmar_venta'; lineas: LineaResuelta[]; metodoPago: MetodoPago; confirmarSobreStock: boolean }
+  /** Venta lista (ya se verificó el stock); espera Confirmar/Cancelar. */
+  | { tipo: 'confirmar_venta'; lineas: LineaResuelta[]; metodoPago: MetodoPago }
   /** Entrada lista; espera Confirmar/Cancelar. */
   | { tipo: 'confirmar_entrada'; lineas: LineaResuelta[]; referencia: string }
   /** Baja lista; espera Confirmar/Cancelar. */
@@ -67,7 +67,7 @@ export interface Salida {
  */
 export type Efecto =
   | { tipo: 'parsear'; operacion: Operacion; texto: string }
-  | { tipo: 'registrar_venta'; lineas: LineaResuelta[]; metodoPago: MetodoPago; confirmarSobreStock: boolean }
+  | { tipo: 'registrar_venta'; lineas: LineaResuelta[]; metodoPago: MetodoPago }
   | { tipo: 'registrar_entrada'; lineas: LineaResuelta[]; referencia: string }
   | { tipo: 'registrar_baja'; lineas: LineaResuelta[]; motivo: MotivoBaja }
 
@@ -160,7 +160,7 @@ export function avanzar(estado: Estado, texto: string): Transicion {
       const metodo = metodoDe(t)
       if (!metodo) return { estado, salidas: [{ texto: VENTA_PEDIR_PAGO, teclado: tecladoPago() }] }
       return {
-        estado: { tipo: 'confirmar_venta', lineas: estado.lineas, metodoPago: metodo, confirmarSobreStock: false },
+        estado: { tipo: 'confirmar_venta', lineas: estado.lineas, metodoPago: metodo },
         salidas: [{ texto: '¿Confirmas la venta?', teclado: tecladoConfirmar() }]
       }
     }
@@ -187,7 +187,7 @@ export function avanzar(estado: Estado, texto: string): Transicion {
         return {
           estado,
           salidas: [],
-          efecto: { tipo: 'registrar_venta', lineas: estado.lineas, metodoPago: estado.metodoPago, confirmarSobreStock: estado.confirmarSobreStock }
+          efecto: { tipo: 'registrar_venta', lineas: estado.lineas, metodoPago: estado.metodoPago }
         }
       }
       return { estado, salidas: [{ texto: '¿Confirmas la venta?', teclado: tecladoConfirmar() }] }
@@ -229,12 +229,13 @@ export function noEntendido(aviso: string): Transicion {
   return { estado: { tipo: 'inactivo' }, salidas: [{ texto: aviso, teclado: tecladoPrincipal() }] }
 }
 
-/** La venta superó el stock: se advierte y se pide una segunda confirmación (regla de negocio HU-03). */
-export function pedirConfirmacionSobreStock(
-  estado: Extract<Estado, { tipo: 'confirmar_venta' }>,
-  aviso: string
-): Transicion {
-  return { estado: { ...estado, confirmarSobreStock: true }, salidas: [{ texto: aviso, teclado: tecladoConfirmar() }] }
+/**
+ * La venta supera el stock: se RECHAZA (regla de negocio HU-03, docs/PREGUNTAS.md 34). No se pide el
+ * método de pago ni una segunda confirmación; vuelve a inactivo con el teclado principal.
+ * No es un mensaje "no entendido": no se guarda como pendiente.
+ */
+export function ventaRechazada(aviso: string): Transicion {
+  return { estado: { tipo: 'inactivo' }, salidas: [{ texto: aviso, teclado: tecladoPrincipal() }] }
 }
 
 /** El movimiento quedó registrado: vuelve a inactivo y confirma al operario. */

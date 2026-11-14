@@ -40,24 +40,41 @@ describe('HU-03 · Registrar venta en mostrador', () => {
     expect(db.prepare(`SELECT precio_unitario FROM movimientos WHERE tipo = 'venta'`).get()).toEqual({ precio_unitario: 62000 })
   })
 
-  it('C2: si supera el stock, advierte (409) con los productos y no registra nada', async () => {
+  it('C2: si supera el stock, se RECHAZA (400) con el disponible y no registra ninguna línea', async () => {
     const { app, db } = nuevaApi()
     const a = productoCon(db, 3, { nombre: 'Concentrado Gatsy Gatos 3kg' })
     const b = productoCon(db, 10, { nombre: 'Arena sanitaria 10kg' })
     const payload = { metodoPago: 'efectivo', lineas: [{ productoId: a, cantidad: 5 }, { productoId: b, cantidad: 1 }] }
     const r = await app.inject({ method: 'POST', url: '/ventas', payload })
-    expect(r.statusCode).toBe(409)
+    expect(r.statusCode).toBe(400)
     expect(r.json()).toEqual({
       error: {
-        mensaje: 'Estos productos superan el stock disponible: Concentrado Gatsy Gatos 3kg. ¿Confirmas la venta de todos modos?',
-        productos: ['Concentrado Gatsy Gatos 3kg']
+        mensaje: 'No hay stock suficiente de: Concentrado Gatsy Gatos 3kg (disponible: 3). No se registró la venta.',
+        productos: [{ nombre: 'Concentrado Gatsy Gatos 3kg', disponible: 3 }]
       }
     })
     expect(stockDe(db, a)).toBe(3)
     expect(stockDe(db, b)).toBe(10)
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM movimientos WHERE tipo = 'venta'`).get()).toEqual({ n: 0 })
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM ventas`).get()).toEqual({ n: 0 })
   })
 
-  it('C2: con confirmación explícita la venta se registra', async () => {
+  it('C2: lista todos los productos sin stock suficiente', async () => {
+    const { app, db } = nuevaApi()
+    const a = productoCon(db, 3, { nombre: 'Concentrado Dog Chow Adulto 8kg' })
+    const b = productoCon(db, 0, { nombre: 'Collar para perro' })
+    const r = await app.inject({
+      method: 'POST',
+      url: '/ventas',
+      payload: { metodoPago: 'efectivo', lineas: [{ productoId: a, cantidad: 4 }, { productoId: b, cantidad: 1 }] }
+    })
+    expect(r.statusCode).toBe(400)
+    expect(r.json().error.mensaje).toBe(
+      'No hay stock suficiente de: Concentrado Dog Chow Adulto 8kg (disponible: 3), Collar para perro (disponible: 0). No se registró la venta.'
+    )
+  })
+
+  it('C2: ya no existe la confirmación "de todos modos" (confirmarSobreStock se ignora)', async () => {
     const { app, db } = nuevaApi()
     const a = productoCon(db, 3)
     const r = await app.inject({
@@ -65,19 +82,30 @@ describe('HU-03 · Registrar venta en mostrador', () => {
       url: '/ventas',
       payload: { metodoPago: 'efectivo', lineas: [{ productoId: a, cantidad: 5 }], confirmarSobreStock: true }
     })
-    expect(r.statusCode).toBe(201)
-    expect(stockDe(db, a)).toBe(-2)
+    expect(r.statusCode).toBe(400)
+    expect(stockDe(db, a)).toBe(3)
   })
 
-  it('C2: suma las líneas repetidas del mismo producto al revisar el stock', async () => {
+  it('C2: vender exactamente el stock disponible sí se permite (queda en 0)', async () => {
     const { app, db } = nuevaApi()
     const a = productoCon(db, 3)
+    const r = await app.inject({ method: 'POST', url: '/ventas', payload: { metodoPago: 'efectivo', lineas: [{ productoId: a, cantidad: 3 }] } })
+    expect(r.statusCode).toBe(201)
+    expect(stockDe(db, a)).toBe(0)
+  })
+
+  it('C2: suma las líneas repetidas del mismo producto: juntas superan el stock y se rechaza', async () => {
+    const { app, db } = nuevaApi()
+    const a = productoCon(db, 3, { nombre: 'Arena sanitaria 10kg' })
     const r = await app.inject({
       method: 'POST',
       url: '/ventas',
       payload: { metodoPago: 'efectivo', lineas: [{ productoId: a, cantidad: 2 }, { productoId: a, cantidad: 2 }] }
     })
-    expect(r.statusCode).toBe(409)
+    expect(r.statusCode).toBe(400)
+    expect(r.json().error.productos).toEqual([{ nombre: 'Arena sanitaria 10kg', disponible: 3 }])
+    expect(stockDe(db, a)).toBe(3)
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM movimientos WHERE tipo = 'venta'`).get()).toEqual({ n: 0 })
   })
 
   it('C3: el total se recalcula con cantidad × precio vigente', () => {

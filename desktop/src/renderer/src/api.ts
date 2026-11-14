@@ -1,6 +1,6 @@
 // Cliente HTTP de la API embebida. React habla con la API por HTTP (igual que lo hará el chat).
 import { API_URL } from '@shared/config'
-import type { ErrorRespuesta } from '@shared/tipos'
+import type { ErrorRespuesta, ProductoSinStock } from '@shared/tipos'
 
 const BASE = window.playa?.apiUrl ?? API_URL
 
@@ -9,7 +9,7 @@ export class ErrorDeApi extends Error {
     public status: number,
     mensaje: string,
     public campo?: string,
-    public productos?: string[]
+    public productos?: ProductoSinStock[]
   ) {
     super(mensaje)
   }
