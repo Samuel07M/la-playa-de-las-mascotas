@@ -4,7 +4,7 @@
 
 export const SALUDO =
   '¡Hola! Soy el chat de La Playa de las Mascotas.\n\n' +
-  'Desde aquí registras los movimientos de la tienda sin usar la libreta. ¿Qué quieres hacer?'
+  'Desde aquí registras los movimientos de la tienda. ¿Qué quieres hacer?'
 
 /** Texto de los botones del teclado. Son también lo que el operario "envía" al tocarlos. */
 export const BOTON_VENTA = 'Registrar venta'
