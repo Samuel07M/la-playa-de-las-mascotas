@@ -8,7 +8,7 @@
 
 import type { BaseDeDatos } from '../db/connection'
 import { ENV_TELEGRAM_CHATS, ENV_TELEGRAM_TOKEN } from '../../shared/config'
-import { parsearChatsAutorizados } from './logica'
+import { estaAutorizado, parsearChatsAutorizados } from './logica'
 import { ManejadorChat, type RespuestaChat } from './manejador'
 import { registroConsola, type Registro } from '../registro'
 
@@ -83,6 +83,14 @@ async function enviar(token: string, chatId: number, r: RespuestaChat, registro:
   )
 }
 
+/**
+ * Aviso para el registro cuando escribe un chat no autorizado: deja su chat ID para que se pueda
+ * agregar a TELEGRAM_CHATS_AUTORIZADOS (así se obtienen los IDs de Alirio y Olga al instalar).
+ */
+export function avisoChatNoAutorizado(chatId: number, usuario: string): string {
+  return `Mensaje de un chat no autorizado: ${chatId} (${usuario}). Si es del equipo, agrega ${chatId} a TELEGRAM_CHATS_AUTORIZADOS en el .env y reinicia la app.`
+}
+
 function aMensajeEntrante(u: Update): MensajeEntrante | null {
   const chatId = u.message?.chat?.id
   const texto = u.message?.text
@@ -136,6 +144,7 @@ export function iniciarBot(
           offset = u.update_id + 1
           const m = aMensajeEntrante(u)
           if (!m) continue
+          if (!estaAutorizado(m.chatId, autorizados)) registro.aviso(avisoChatNoAutorizado(m.chatId, m.usuario))
           try {
             for (const respuesta of manejador.procesar(m.chatId, m.texto, m.usuario)) {
               await enviar(token!, m.chatId, respuesta, registro)

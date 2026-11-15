@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { cargarEnv, parsearEnv, rutasDeLaApp } from '../../main/env'
 import { lineaDeRegistro, registroEnArchivo, type Registro } from '../registro'
-import { iniciarBot } from '../telegram/bot'
+import { avisoChatNoAutorizado, iniciarBot } from '../telegram/bot'
 import { nuevaDb } from './ayudas'
 
 const USER_DATA = join('C:', 'Users', 'tienda', 'AppData', 'Roaming', 'La Playa de las Mascotas')
@@ -64,6 +64,12 @@ describe('App instalada · registro del bot (telegram.log)', () => {
     registroEnArchivo(ruta).info('nuevo')
     expect(readFileSync(ruta + '.1', 'utf8').length).toBe(1024 * 1024 + 1)
     expect(readFileSync(ruta, 'utf8')).toMatch(/\[INFO\] nuevo\n$/)
+  })
+
+  it('el chat ID de quien escribe sin autorización queda en el registro, para agregarlo al .env', () => {
+    expect(avisoChatNoAutorizado(123456789, 'Olga')).toBe(
+      'Mensaje de un chat no autorizado: 123456789 (Olga). Si es del equipo, agrega 123456789 a TELEGRAM_CHATS_AUTORIZADOS en el .env y reinicia la app.'
+    )
   })
 
   it('sin token el bot no arranca, lo deja en el registro y la app sigue', () => {
