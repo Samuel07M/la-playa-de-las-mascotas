@@ -1,0 +1,40 @@
+name: Instalador Windows
+
+# Genera el instalador .exe de la app de escritorio en un Windows de GitHub, para no depender de
+# tener Windows a mano. Se ejecuta a mano (pestaña Actions → «Instalador Windows» → «Run workflow»)
+# o al subir un tag que empiece por v (ej.: git tag v1.0.0 && git push origin v1.0.0).
+# El .exe queda como artifact descargable en la página de la ejecución.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  instalador:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      # El instalador no está firmado: que electron-builder no busque certificados.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # --publish never: solo se genera el .exe; nunca se publica un release automáticamente.
+      - run: npm run build:win -- --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: instalador-windows
+          path: desktop/dist/*.exe
+          if-no-files-found: error
+          retention-days: 30
