@@ -1,4 +1,5 @@
-// Máquina de conversación del chat por cada chat de Telegram (HU-11 venta, HU-12 entrada y baja).
+// Máquina de conversación del chat por cada chat de Telegram (HU-11 venta, HU-12 entrada y baja,
+// HU-13 consulta de precio y stock).
 // Es lógica pura: recibe el estado actual + el texto del operario y devuelve el nuevo estado,
 // los mensajes a enviar y, cuando corresponde, un "efecto" que el bot ejecuta contra la base de
 // datos (interpretar productos o registrar el movimiento). Así todo el flujo se prueba sin red ni BD.
@@ -15,6 +16,7 @@ import {
   BOTON_BAJA,
   BOTON_CANCELAR,
   BOTON_CONFIRMAR,
+  BOTON_CONSULTA,
   BOTON_DANADO,
   BOTON_DIGITAL,
   BOTON_EFECTIVO,
@@ -22,6 +24,8 @@ import {
   BOTON_OTRO,
   BOTON_VENCIDO,
   BOTON_VENTA,
+  CONSULTA_CANCELADA,
+  CONSULTA_PEDIR,
   ENTRADA_CANCELADA,
   ENTRADA_CONFIRMAR,
   ENTRADA_PEDIR,
@@ -54,6 +58,8 @@ export type Estado =
   | { tipo: 'confirmar_entrada'; lineas: LineaResuelta[]; referencia: string }
   /** Baja lista; espera Confirmar/Cancelar. */
   | { tipo: 'confirmar_baja'; lineas: LineaResuelta[]; motivo: MotivoBaja }
+  /** Consulta (HU-13): espera el nombre o alias del producto, o que toque una sugerencia. */
+  | { tipo: 'esperando_consulta' }
 
 /** Mensaje que el bot debe enviar. */
 export interface Salida {
@@ -70,6 +76,8 @@ export type Efecto =
   | { tipo: 'registrar_venta'; lineas: LineaResuelta[]; metodoPago: MetodoPago }
   | { tipo: 'registrar_entrada'; lineas: LineaResuelta[]; referencia: string }
   | { tipo: 'registrar_baja'; lineas: LineaResuelta[]; motivo: MotivoBaja }
+  /** HU-13: buscar el producto y responder precio y stock (solo lectura). */
+  | { tipo: 'consultar'; texto: string }
 
 export interface Transicion {
   estado: Estado
@@ -94,6 +102,10 @@ const metodoDe = (texto: string): MetodoPago | null =>
 
 const motivoDe = (texto: string): MotivoBaja | null =>
   texto === BOTON_VENCIDO ? 'vencido' : texto === BOTON_DANADO ? 'dañado' : texto === BOTON_OTRO ? 'otro' : null
+
+/** Botones del menú principal: tocarlos durante una espera de texto reinicia esa acción. */
+const esBotonPrincipal = (t: string): boolean =>
+  t === BOTON_VENTA || t === BOTON_ENTRADA || t === BOTON_BAJA || t === BOTON_CONSULTA
 
 /** Comandos de bienvenida: /start, texto vacío o un saludo simple (no es un intento de registro). */
 function esSaludo(t: string): boolean {
@@ -129,7 +141,8 @@ export function avanzar(estado: Estado, texto: string): Transicion {
 
   // Cancelar en cualquier punto de una operación en curso (el stock no se modifica).
   if (t === BOTON_CANCELAR && estado.tipo !== 'inactivo') {
-    return { estado: { tipo: 'inactivo' }, salidas: [{ texto: cancelada(operacionDe(estado)), teclado: tecladoPrincipal() }] }
+    const aviso = estado.tipo === 'esperando_consulta' ? CONSULTA_CANCELADA : cancelada(operacionDe(estado))
+    return { estado: { tipo: 'inactivo' }, salidas: [{ texto: aviso, teclado: tecladoPrincipal() }] }
   }
 
   switch (estado.tipo) {
@@ -143,6 +156,9 @@ export function avanzar(estado: Estado, texto: string): Transicion {
       if (t === BOTON_BAJA) {
         return { estado: { tipo: 'esperando_productos', operacion: 'baja' }, salidas: [{ texto: BAJA_PEDIR, teclado: tecladoCancelar() }] }
       }
+      if (t === BOTON_CONSULTA) {
+        return { estado: { tipo: 'esperando_consulta' }, salidas: [{ texto: CONSULTA_PEDIR, teclado: tecladoCancelar() }] }
+      }
       // /start, "hola" o vacío: saludo con botones (HU-10).
       if (esSaludo(t)) {
         return { estado, salidas: [{ texto: SALUDO, teclado: tecladoPrincipal() }] }
@@ -155,9 +171,16 @@ export function avanzar(estado: Estado, texto: string): Transicion {
       // Un botón del menú principal no es una lista de productos: reinicia esa operación (vuelve a
       // enviar las instrucciones) en vez de tomarse como mensaje no entendido. Pasa si el operario
       // no vio la respuesta anterior y sigue viendo el menú principal.
-      if (t === BOTON_VENTA || t === BOTON_ENTRADA || t === BOTON_BAJA) return avanzar({ tipo: 'inactivo' }, t)
+      if (esBotonPrincipal(t)) return avanzar({ tipo: 'inactivo' }, t)
       // El texto se interpreta fuera (necesita la BD): se pide el efecto y el bot vuelve con recibirLineas.
       return { estado, salidas: [], efecto: { tipo: 'parsear', operacion: estado.operacion, texto: t } }
+    }
+
+    case 'esperando_consulta': {
+      if (esBotonPrincipal(t)) return avanzar({ tipo: 'inactivo' }, t)
+      if (t === '') return { estado, salidas: [{ texto: CONSULTA_PEDIR, teclado: tecladoCancelar() }] }
+      // La búsqueda necesita la BD: se pide el efecto y el bot vuelve con consultaRespondida o consultaSugerir.
+      return { estado, salidas: [], efecto: { tipo: 'consultar', texto: t } }
     }
 
     case 'esperando_pago': {
@@ -243,6 +266,20 @@ export function pedirReescribir(operacion: Operacion, aviso: string): Transicion
  */
 export function ventaRechazada(aviso: string): Transicion {
   return { estado: { tipo: 'inactivo' }, salidas: [{ texto: aviso, teclado: tecladoPrincipal() }] }
+}
+
+/** HU-13: se encontró el producto → responde precio y stock y vuelve al menú principal. */
+export function consultaRespondida(respuesta: string): Transicion {
+  return { estado: { tipo: 'inactivo' }, salidas: [{ texto: respuesta, teclado: tecladoPrincipal() }] }
+}
+
+/**
+ * HU-13: no se encontró un único producto → sugiere opciones con botones (uno por fila, más Cancelar)
+ * y sigue esperando la consulta. Tocar un botón envía el nombre exacto del producto.
+ */
+export function consultaSugerir(aviso: string, opciones: string[]): Transicion {
+  const tecladoOpciones = opciones.length ? teclado(...opciones.map((o) => [o]), [BOTON_CANCELAR]) : tecladoCancelar()
+  return { estado: { tipo: 'esperando_consulta' }, salidas: [{ texto: aviso, teclado: tecladoOpciones }] }
 }
 
 /** El movimiento quedó registrado: vuelve a inactivo y confirma al operario. */

@@ -19,14 +19,21 @@ import {
   VENTA_NO_ENTENDIDA,
   bajaExito,
   bajaRechazada,
+  consultaParecidos,
+  consultaResultado,
+  consultaSinResultados,
+  consultaVarios,
   entradaExito,
   productosNoEntendidos,
   ventaExito
 } from './textos'
+import { buscarParaConsulta } from './consultas'
 import { parsearVenta, resolverProductos, resumenCantidades, resumenVenta, type LineaResuelta } from './ventas'
 import {
   avanzar,
   bajaRecibirLineas,
+  consultaRespondida,
+  consultaSugerir,
   entradaRecibirLineas,
   pedirReescribir,
   registrado,
@@ -88,6 +95,9 @@ export class ManejadorChat {
         case 'registrar_baja':
           transicion = this.registrarBaja(efecto)
           break
+        case 'consultar':
+          transicion = this.consultar(efecto.texto)
+          break
       }
       estado = transicion.estado
     }
@@ -116,6 +126,28 @@ export class ManejadorChat {
     const faltantes = faltantesDeStock(this.db, resuelto.lineas)
     if (faltantes.length) return ventaRechazada(M.ventaSinStock(faltantes))
     return ventaRecibirLineas(resuelto.lineas, resumenVenta(resuelto.lineas, money))
+  }
+
+  /**
+   * HU-13: consulta de precio y stock. Solo lee el catálogo (productos activos con su stock calculado
+   * desde movimientos); no escribe nada en la base de datos (criterio 4).
+   */
+  private consultar(texto: string): Transicion {
+    const productos = listarProductos(this.db, { activos: true }).map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      categoria: p.categoria,
+      precioVenta: p.precioVenta,
+      stock: p.stock,
+      alias: p.alias.map((a) => a.texto)
+    }))
+    const r = buscarParaConsulta(texto, productos)
+    if (r.tipo === 'encontrado') {
+      return consultaRespondida(consultaResultado(r.producto.nombre, money(r.producto.precioVenta), r.producto.stock))
+    }
+    const nombres = r.opciones.map((p) => p.nombre)
+    if (r.tipo === 'varios') return consultaSugerir(consultaVarios(texto), nombres)
+    return consultaSugerir(nombres.length ? consultaParecidos(texto) : consultaSinResultados(texto), nombres)
   }
 
   private registrarVenta(efecto: { lineas: LineaResuelta[]; metodoPago: MetodoPago }): Transicion {

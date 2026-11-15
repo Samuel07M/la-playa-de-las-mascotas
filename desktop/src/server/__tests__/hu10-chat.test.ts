@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { nuevaDb } from './ayudas'
 import { estaAutorizado, parsearChatsAutorizados, tecladoPrincipal } from '../telegram/logica'
 import { ManejadorChat } from '../telegram/manejador'
-import { BOTON_BAJA, BOTON_ENTRADA, BOTON_VENTA, NO_AUTORIZADO, SALUDO } from '../telegram/textos'
+import { BOTON_BAJA, BOTON_CONSULTA, BOTON_ENTRADA, BOTON_VENTA, NO_AUTORIZADO, SALUDO } from '../telegram/textos'
 import { parsearEnv } from '../../main/env'
 
 const ALIRIO = 111
@@ -15,14 +15,14 @@ describe('HU-10 · Acceder al chat móvil (Telegram)', () => {
   it('C1 y C2: al abrir el chat (/start) se da la bienvenida y se muestran los botones específicos', () => {
     const r = nuevoChat().procesar(ALIRIO, '/start', 'Alirio')
     expect(r[0].texto).toBe(SALUDO)
-    // Un botón por fila, legibles, y solo los tres necesarios: nada innecesario.
-    expect(r[0].teclado?.keyboard).toEqual([[{ text: BOTON_VENTA }], [{ text: BOTON_ENTRADA }], [{ text: BOTON_BAJA }]])
+    // Un botón por fila, legibles, y solo los necesarios: nada innecesario (HU-13 agregó la consulta).
+    expect(r[0].teclado?.keyboard).toEqual([[{ text: BOTON_VENTA }], [{ text: BOTON_ENTRADA }], [{ text: BOTON_BAJA }], [{ text: BOTON_CONSULTA }]])
     expect(r[0].teclado?.resize_keyboard).toBe(true)
   })
 
-  it('C2: el teclado principal tiene exactamente las tres acciones y ninguna más', () => {
+  it('C2: el teclado principal tiene exactamente las cuatro acciones y ninguna más', () => {
     const botones = tecladoPrincipal().keyboard.flat().map((b) => b.text)
-    expect(botones).toEqual([BOTON_VENTA, BOTON_ENTRADA, BOTON_BAJA])
+    expect(botones).toEqual([BOTON_VENTA, BOTON_ENTRADA, BOTON_BAJA, BOTON_CONSULTA])
   })
 
   it('C3: un chat no autorizado recibe un aviso y ningún teclado', () => {
@@ -41,7 +41,7 @@ describe('HU-10 · Acceder al chat móvil (Telegram)', () => {
   it('un saludo simple de un autorizado abre el chat con botones', () => {
     const r = nuevoChat().procesar(OLGA, 'hola', 'Olga')
     expect(r[0].texto).toBe(SALUDO)
-    expect(r[0].teclado?.keyboard).toHaveLength(3)
+    expect(r[0].teclado?.keyboard).toHaveLength(4)
   })
 
   it('parsea la lista de chats autorizados del .env e ignora valores vacíos o inválidos', () => {

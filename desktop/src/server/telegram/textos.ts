@@ -10,6 +10,7 @@ export const SALUDO =
 export const BOTON_VENTA = 'Registrar venta'
 export const BOTON_ENTRADA = 'Registrar entrada'
 export const BOTON_BAJA = 'Registrar baja'
+export const BOTON_CONSULTA = 'Consultar precio y stock'
 
 /** Mensaje para quien no está autorizado (criterio 3: solo el chat, no las funciones de Isabel). */
 export const NO_AUTORIZADO =
@@ -103,6 +104,30 @@ export const entradaExito = (referencia: string, productos: number): string =>
 /** Confirmación tras registrar una baja (criterio 3). */
 export const bajaExito = (productos: number): string =>
   `✅ Baja registrada (${productos} producto(s)). El stock ya quedó actualizado.`
+
+// ---- HU-13: consultar precio y stock por mensaje (solo lectura) ----
+
+/** Pide el producto a consultar (al tocar «Consultar precio y stock»). */
+export const CONSULTA_PEDIR =
+  'Escribe el nombre o el alias del producto que quieres consultar.\n' + 'Por ejemplo: «dog chow».'
+
+export const CONSULTA_CANCELADA = 'Consulta cancelada.'
+
+/** Respuesta de la consulta: precio vigente (criterio 1) y stock actual (criterio 2). */
+export const consultaResultado = (producto: string, precio: string, stock: number): string =>
+  `${producto}\n\nPrecio: ${precio}\nQuedan: ${stock} ${stock === 1 ? 'unidad' : 'unidades'}.`
+
+/** Varios productos contienen el texto: se ofrecen como botones. */
+export const consultaVarios = (texto: string): string =>
+  `Hay varios productos que coinciden con «${texto}». Toca el que buscas o escribe el nombre más completo.`
+
+/** No se encontró el producto: se sugieren opciones parecidas con botones (criterio 3). */
+export const consultaParecidos = (texto: string): string =>
+  `No encontré «${texto}». ¿Buscabas alguno de estos? Toca uno o escribe el nombre de nuevo.`
+
+/** No se encontró nada ni parecido. */
+export const consultaSinResultados = (texto: string): string =>
+  `No encontré «${texto}» ni productos parecidos. Escribe el nombre de nuevo o toca «Cancelar».`
 
 /** La baja supera el stock: se rechaza, no se registra (punto 4 acordado). */
 export const bajaRechazada = (producto: string, stock: number): string =>
