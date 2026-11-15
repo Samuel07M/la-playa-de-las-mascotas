@@ -8,6 +8,11 @@ export function nuevaDb(): BaseDeDatos {
   return abrirBaseDeDatos(':memory:')
 }
 
+/** Filas de la tabla mensajes (se conserva en la BD, pero el chat ya no escribe en ella; PREGUNTAS 35). */
+export function mensajesGuardados(db: BaseDeDatos): number {
+  return (db.prepare(`SELECT COUNT(*) AS n FROM mensajes`).get() as { n: number }).n
+}
+
 export function nuevaApi(db = nuevaDb()) {
   return { db, app: crearApp(db) }
 }

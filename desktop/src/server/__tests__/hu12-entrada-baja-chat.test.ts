@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { nuevaDb, productoCon } from './ayudas'
+import { mensajesGuardados, nuevaDb, productoCon } from './ayudas'
 import { agregarAlias } from '../modules/alias'
 import { stockDe } from '../modules/movimientos'
 import { listarBajas } from '../modules/bajas'
 import { entradasRecientes } from '../modules/entradas'
-import { listarNoEntendidos } from '../modules/mensajes'
 import { ManejadorChat } from '../telegram/manejador'
 import {
   BOTON_BAJA,
   BOTON_CANCELAR,
   BOTON_CONFIRMAR,
   BOTON_ENTRADA,
-  BOTON_VENCIDO
+  BOTON_VENCIDO,
+  MOVIMIENTO_NO_ENTENDIDO
 } from '../telegram/textos'
 
 const CHAT = 111
@@ -121,23 +121,31 @@ describe('HU-12 · Registrar bajas por mensaje', () => {
   })
 })
 
-describe('HU-12 · Mensaje no entendido (punto 5)', () => {
-  it('entrada: un mensaje sin patrón se guarda como pendiente y no registra nada', () => {
+describe('HU-12 · Mensaje no entendido (cambio HU-15: el bot pide reescribir, no guarda nada)', () => {
+  it('entrada: un mensaje sin patrón se pide de nuevo; no pide referencia ni registra nada', () => {
     const { db } = tienda()
     const chat = new ManejadorChat(db, AUTORIZADOS)
     chat.procesar(CHAT, BOTON_ENTRADA, 'Alirio')
     const r = chat.procesar(CHAT, 'llegaron unas cosas', 'Alirio')
-    expect(r.map((x) => x.texto).join('\n')).toContain('revise')
-    expect(listarNoEntendidos(db, true)).toHaveLength(1)
+    expect(r.map((x) => x.texto).join('\n')).toBe(MOVIMIENTO_NO_ENTENDIDO)
+    expect(mensajesGuardados(db)).toBe(0)
+    // Lo siguiente que escriba se sigue tomando como los productos de la entrada, no como referencia.
+    const r2 = chat.procesar(CHAT, 'FAC-1023', 'Alirio')
+    expect(r2.map((x) => x.texto).join('\n')).toBe(MOVIMIENTO_NO_ENTENDIDO)
     expect(entradasRecientes(db)).toHaveLength(0)
+    // Con un mensaje válido, la entrada continúa.
+    expect(chat.procesar(CHAT, '2 arena', 'Alirio').map((x) => x.texto).join('\n')).toContain('Resumen de la entrada')
   })
 
-  it('baja: producto no reconocido va a pendientes', () => {
+  it('baja: producto no reconocido se indica y se pide de nuevo, sin pedir motivo', () => {
     const { db } = tienda()
     const chat = new ManejadorChat(db, AUTORIZADOS)
     chat.procesar(CHAT, BOTON_BAJA, 'Olga')
-    chat.procesar(CHAT, '1 producto inexistente', 'Olga')
-    expect(listarNoEntendidos(db, true)).toHaveLength(1)
+    const r = chat.procesar(CHAT, '1 producto inexistente', 'Olga')
+    const texto = r.map((x) => x.texto).join('\n')
+    expect(texto).toContain('No reconozco: «producto inexistente».')
+    expect(texto).not.toContain('¿Por qué das de baja')
+    expect(mensajesGuardados(db)).toBe(0)
     expect(listarBajas(db)).toHaveLength(0)
   })
 })

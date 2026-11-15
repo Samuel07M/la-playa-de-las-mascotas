@@ -9,7 +9,6 @@ import { registrarVenta } from '../modules/ventas'
 import { registrarBaja } from '../modules/bajas'
 import { hoyColombia } from '../../shared/formato'
 import { crearProveedor, registrarPrecio } from '../modules/proveedores'
-import { registrarMensaje } from '../modules/mensajes'
 
 // Datos de demostración: los mismos 8 productos, alias, inventario inicial, venta V-000
 // y baja del mockup aprobado (función seed()). Solo se usa con `npm run seed`.
@@ -43,13 +42,6 @@ const PRECIOS: [number, number, number, number][] = [
   [2, 1, 28000, 10],
   [1, 2, 17000, 20],
   [2, 4, 6500, 15]
-]
-
-// [texto, usuario, hace cuántas horas]
-const MENSAJES: [string, string, number][] = [
-  ['vendi 2 chow pequeño', 'Alirio', 26],
-  ['llegaron 5 bultos de pedigree', 'Olga', 20],
-  ['se rompio un platico', 'Alirio', 3]
 ]
 
 export function seed(db: BaseDeDatos, ahora = Date.now()): void {
@@ -88,15 +80,12 @@ export function seed(db: BaseDeDatos, ahora = Date.now()): void {
       { consecutivo: 'V-000', fecha: hace(2) }
     )
     registrarBaja(db, { productoId: ids[0], cantidad: 1, motivo: 'vencido' }, hace(1))
-    // Fase 3 (sin mockup): proveedores con historial de precios de compra (HU-07) y mensajes
-    // del chat que no se entendieron (HU-15). No se agregan movimientos: el stock queda como en el mockup.
+    // Fase 3 (sin mockup): proveedores con historial de precios de compra (HU-07).
+    // No se agregan movimientos: el stock queda como en el mockup.
     const dia = (dias: number) => hoyColombia(ahora - dias * DIA)
     const prov = PROVEEDORES.map(([nombre, telefono, correo]) => crearProveedor(db, { nombre, telefono, correo }).id)
     for (const [pv, pr, precio, dias] of PRECIOS) {
       registrarPrecio(db, prov[pv], { productoId: ids[pr], precio, fecha: dia(dias) })
-    }
-    for (const [texto, usuario, horas] of MENSAJES) {
-      registrarMensaje(db, { texto, usuario, estado: 'no_entendido', fecha: new Date(ahora - horas * 36e5).toISOString() })
     }
     PRODUCTOS.forEach((p, i) => {
       if (!p[6]) db.prepare(`UPDATE productos SET activo = 0 WHERE id = ?`).run(ids[i])

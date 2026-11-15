@@ -148,15 +148,3 @@ export interface TopProveedor {
   valor: number
 }
 
-// HU-15
-export interface Mensaje {
-  id: number
-  texto: string
-  usuario: string
-  fecha: string
-  estado: 'confirmado' | 'corregido' | 'no_entendido'
-  revisado: boolean
-  productoId: number | null
-  producto: string | null
-  aliasTexto: string | null
-}

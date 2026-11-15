@@ -228,15 +228,18 @@ export function bajaRecibirLineas(lineas: LineaResuelta[], resumen: string): Tra
   return { estado: { tipo: 'esperando_motivo', lineas }, salidas: [{ texto: resumen }, { texto: BAJA_PEDIR_MOTIVO, teclado: tecladoMotivo() }] }
 }
 
-/** El mensaje no se entendió o tiene productos no reconocidos: vuelve a inactivo (ya se guardó como pendiente). */
-export function noEntendido(aviso: string): Transicion {
-  return { estado: { tipo: 'inactivo' }, salidas: [{ texto: aviso, teclado: tecladoPrincipal() }] }
+/**
+ * El mensaje no se entendió (formato, producto no reconocido o ambiguo): el bot no avanza.
+ * Sigue esperando los productos de la misma operación hasta recibir un mensaje válido o «Cancelar».
+ * No se guarda ni se avisa a la administradora (cambio de HU-15, docs/PREGUNTAS.md 35).
+ */
+export function pedirReescribir(operacion: Operacion, aviso: string): Transicion {
+  return { estado: { tipo: 'esperando_productos', operacion }, salidas: [{ texto: aviso, teclado: tecladoCancelar() }] }
 }
 
 /**
  * La venta supera el stock: se RECHAZA (regla de negocio HU-03, docs/PREGUNTAS.md 34). No se pide el
  * método de pago ni una segunda confirmación; vuelve a inactivo con el teclado principal.
- * No es un mensaje "no entendido": no se guarda como pendiente.
  */
 export function ventaRechazada(aviso: string): Transicion {
   return { estado: { tipo: 'inactivo' }, salidas: [{ texto: aviso, teclado: tecladoPrincipal() }] }

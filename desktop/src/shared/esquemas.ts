@@ -20,7 +20,7 @@ export const M = {
     'No hay stock suficiente de: ' +
     productos.map((p) => `${p.nombre} (disponible: ${p.disponible})`).join(', ') +
     '. No se registró la venta.',
-  // HU-07, HU-08, HU-09 y HU-15 no tienen mockup: textos propuestos (docs/PREGUNTAS.md, 24).
+  // HU-07, HU-08 y HU-09 no tienen mockup: textos propuestos (docs/PREGUNTAS.md, 24).
   correo: 'Escribe un correo válido.',
   proveedorActivo: 'Selecciona un proveedor activo.',
   proveedorNoExiste: 'El proveedor no existe.',
@@ -29,8 +29,7 @@ export const M = {
   rango: 'La fecha inicial no puede ser posterior a la final.',
   efectivoContado: 'Indica el efectivo contado (entero, 0 o más).',
   digitalContado: 'Indica el monto digital recibido (entero, 0 o más).',
-  cuadreExiste: 'Ya hay un cuadre guardado para este día.',
-  mensajeNoExiste: 'El mensaje no existe.'
+  cuadreExiste: 'Ya hay un cuadre guardado para este día.'
 } as const
 
 const id = (mensaje: string) => z.number({ error: mensaje }).int(mensaje).positive(mensaje)
@@ -119,12 +118,6 @@ export const rangoSchema = z
   .object({ desde: fechaDia, hasta: fechaDia })
   .refine((r) => r.desde <= r.hasta, { message: M.rango, path: ['desde'] })
 export type Rango = z.infer<typeof rangoSchema>
-
-// HU-15
-export const aliasDesdeMensajeSchema = z.object({
-  productoId: id(M.productoExistente),
-  texto: z.string({ error: M.alias }).trim().min(1, M.alias)
-})
 
 /**
  * Convierte los errores de Zod en { campo: mensaje } (primer mensaje por campo),

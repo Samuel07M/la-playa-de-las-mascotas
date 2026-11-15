@@ -25,10 +25,14 @@ export const VENTA_COMO_ESCRIBIR =
 /** Pide escribir la venta (al tocar el botón «Registrar venta»). */
 export const VENTA_PEDIR = 'Vamos a registrar una venta.\n\n' + VENTA_COMO_ESCRIBIR
 
-/** El mensaje no sigue el formato o tiene productos no reconocidos: se guarda para que Isabel lo revise. */
-export const VENTA_NO_ENTENDIDA =
-  'No entendí bien el mensaje, así que lo guardé para que la administradora lo revise.\n\n' +
-  VENTA_COMO_ESCRIBIR
+/** Cierre de todo mensaje no entendido: el bot no avanza hasta recibir un mensaje válido. */
+const REESCRIBIR = 'Escríbelo de nuevo o toca «Cancelar».'
+
+/**
+ * El mensaje de la venta no sigue el formato: el bot lo dice y pide reescribirlo (no se guarda ni
+ * se avisa a la administradora; cambio de HU-15 del 14/11/2026, docs/PREGUNTAS.md 35).
+ */
+export const VENTA_NO_ENTENDIDA = 'No entendí el mensaje.\n\n' + VENTA_COMO_ESCRIBIR + '\n\n' + REESCRIBIR
 
 export const BOTON_EFECTIVO = 'Efectivo'
 export const BOTON_DIGITAL = 'Digital'
@@ -71,10 +75,20 @@ export const BOTON_DANADO = 'Dañado'
 export const BOTON_OTRO = 'Otro'
 export const BAJA_PEDIR_MOTIVO = '¿Por qué das de baja estos productos?'
 
-/** Mensaje no entendido para entrada o baja: se guarda para que Isabel lo revise (punto 5). */
-export const MOVIMIENTO_NO_ENTENDIDO =
-  'No entendí bien el mensaje, así que lo guardé para que la administradora lo revise.\n\n' +
-  COMO_ESCRIBIR_PRODUCTOS
+/** Mensaje de entrada o baja que no sigue el formato: se pide reescribirlo. */
+export const MOVIMIENTO_NO_ENTENDIDO = 'No entendí el mensaje.\n\n' + COMO_ESCRIBIR_PRODUCTOS + '\n\n' + REESCRIBIR
+
+/**
+ * El mensaje sigue el formato pero hay productos que no se reconocen o que coinciden con varios:
+ * se dice cuáles y se pide reescribirlo.
+ */
+export function productosNoEntendidos(noReconocidos: string[], ambiguos: string[], venta: boolean): string {
+  const lista = (xs: string[]) => xs.map((x) => `«${x}»`).join(', ')
+  const partes: string[] = []
+  if (noReconocidos.length) partes.push(`No reconozco: ${lista(noReconocidos)}.`)
+  if (ambiguos.length) partes.push(`Hay varios productos que coinciden con ${lista(ambiguos)}: escribe el nombre más completo.`)
+  return [partes.join('\n'), venta ? VENTA_COMO_ESCRIBIR : COMO_ESCRIBIR_PRODUCTOS, REESCRIBIR].join('\n\n')
+}
 
 export const ENTRADA_CANCELADA = 'Entrada cancelada. No se modificó el stock.'
 export const BAJA_CANCELADA = 'Baja cancelada. No se modificó el stock.'

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { nuevaDb, productoCon } from './ayudas'
+import { mensajesGuardados, nuevaDb, productoCon } from './ayudas'
 import { agregarAlias } from '../modules/alias'
 import { stockDe } from '../modules/movimientos'
-import { listarNoEntendidos } from '../modules/mensajes'
 import { parsearVenta, resolverProductos } from '../telegram/ventas'
 import { ManejadorChat } from '../telegram/manejador'
 import { listarProductos } from '../modules/productos'
@@ -108,21 +107,64 @@ describe('HU-11 · Flujo de conversación', () => {
     expect(stockDe(db, chow)).toBe(10)
   })
 
-  it('mensaje no entendido: se guarda como pendiente y no se registra venta (puntos 3 y 4)', () => {
+  it('mensaje no entendido: el bot pide reescribirlo, no avanza y no guarda nada (cambio HU-15)', () => {
     const { db } = tiendaConChow()
     const chat = new ManejadorChat(db, AUTORIZADOS)
+    chat.procesar(CHAT, BOTON_VENTA, 'Olga')
     const r = chat.procesar(CHAT, 'vendi unos collares', 'Olga')
-    expect(r.map((x) => x.texto).join('\n')).toContain(VENTA_NO_ENTENDIDA)
-    const pendientes = listarNoEntendidos(db, true)
-    expect(pendientes).toHaveLength(1)
-    expect(pendientes[0]).toMatchObject({ texto: 'vendi unos collares', usuario: 'Olga', estado: 'no_entendido' })
+    expect(r.map((x) => x.texto).join('\n')).toBe(VENTA_NO_ENTENDIDA)
+    expect(VENTA_NO_ENTENDIDA).not.toContain('administradora')
+    // Solo se puede cancelar: no hay botones de pago ni de confirmar.
+    expect(r.at(-1)!.teclado!.keyboard).toEqual([[{ text: BOTON_CANCELAR }]])
+    expect(mensajesGuardados(db)).toBe(0)
+    // Pulsar Efectivo o Confirmar no hace avanzar la venta: se sigue pidiendo el mensaje.
+    expect(chat.procesar(CHAT, BOTON_EFECTIVO, 'Olga').map((x) => x.texto).join('\n')).toBe(VENTA_NO_ENTENDIDA)
+    chat.procesar(CHAT, BOTON_CONFIRMAR, 'Olga')
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM ventas`).get()).toEqual({ n: 0 })
   })
 
-  it('producto no reconocido también va a pendientes', () => {
+  it('después del aviso, un mensaje bien escrito continúa la misma venta', () => {
+    const { db, chow } = tiendaConChow()
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    chat.procesar(CHAT, 'vendi dos dog chow', 'Alirio') // texto libre desde el menú: se toma como venta
+    const r = chat.procesar(CHAT, '2 dog chow', 'Alirio')
+    expect(r.map((x) => x.texto).join('\n')).toContain('Resumen de la venta')
+    chat.procesar(CHAT, BOTON_EFECTIVO, 'Alirio')
+    chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
+    expect(stockDe(db, chow)).toBe(8)
+    expect(mensajesGuardados(db)).toBe(0)
+  })
+
+  it('producto no reconocido: dice cuál no reconoce y pide reescribir, sin guardar', () => {
     const { db } = tiendaConChow()
     const chat = new ManejadorChat(db, AUTORIZADOS)
-    chat.procesar(CHAT, '1 producto que no existe', 'Alirio')
-    expect(listarNoEntendidos(db, true)).toHaveLength(1)
+    const r = chat.procesar(CHAT, '2 dog chow y 1 producto que no existe', 'Alirio')
+    const texto = r.map((x) => x.texto).join('\n')
+    expect(texto).toContain('No reconozco: «producto que no existe».')
+    expect(texto).toContain('Escríbelo de nuevo o toca «Cancelar».')
+    expect(texto).not.toContain('Resumen de la venta')
+    expect(mensajesGuardados(db)).toBe(0)
+  })
+
+  it('producto ambiguo: pide escribir el nombre más completo y no especula', () => {
+    const { db } = tiendaConChow()
+    productoCon(db, 5, { nombre: 'Concentrado Gatsy Gatos 3kg' })
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    const r = chat.procesar(CHAT, '1 concentrado', 'Alirio')
+    expect(r.map((x) => x.texto).join('\n')).toContain(
+      'Hay varios productos que coinciden con «concentrado»: escribe el nombre más completo.'
+    )
+    expect(mensajesGuardados(db)).toBe(0)
+  })
+
+  it('cancelar después de un mensaje no entendido vuelve al menú sin tocar el stock', () => {
+    const { db, chow } = tiendaConChow()
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    chat.procesar(CHAT, 'vendi unos collares', 'Olga')
+    const r = chat.procesar(CHAT, BOTON_CANCELAR, 'Olga')
+    expect(r.map((x) => x.texto).join('\n')).toBe(VENTA_CANCELADA)
+    expect(r.at(-1)!.teclado).toEqual(tecladoPrincipal())
+    expect(stockDe(db, chow)).toBe(10)
   })
 
   it('C/HU-03: venta que supera el stock se RECHAZA antes del resumen y de pedir el método de pago', () => {
@@ -136,8 +178,8 @@ describe('HU-11 · Flujo de conversación', () => {
     // Vuelve al teclado principal (sin botones Efectivo/Digital) y a inactivo.
     expect(r.at(-1)!.teclado).toEqual(tecladoPrincipal())
     expect(stockDe(db, chow)).toBe(10)
-    // No es un mensaje "no entendido": no se guarda como pendiente.
-    expect(listarNoEntendidos(db, true)).toHaveLength(0)
+    // No se guarda nada en mensajes.
+    expect(mensajesGuardados(db)).toBe(0)
     // Pulsar Efectivo después no continúa ninguna venta.
     chat.procesar(CHAT, BOTON_EFECTIVO, 'Alirio')
     chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
@@ -201,7 +243,7 @@ describe('HU-11 · Respuesta perdida tras confirmar una venta (error reportado e
     // Segundo toque del mismo botón: vuelve a enviar las instrucciones.
     const r = chat.procesar(CHAT, BOTON_VENTA, 'Alirio')
     expect(r.map((x) => x.texto).join('\n')).toBe(VENTA_PEDIR)
-    expect(listarNoEntendidos(db, true)).toHaveLength(0)
+    expect(mensajesGuardados(db)).toBe(0)
     // Y la venta sigue normalmente.
     chat.procesar(CHAT, '1 dog chow', 'Alirio')
     chat.procesar(CHAT, BOTON_EFECTIVO, 'Alirio')
@@ -215,7 +257,7 @@ describe('HU-11 · Respuesta perdida tras confirmar una venta (error reportado e
     chat.procesar(CHAT, BOTON_VENTA, 'Olga')
     expect(chat.procesar(CHAT, BOTON_ENTRADA, 'Olga').map((x) => x.texto).join('\n')).toBe(ENTRADA_PEDIR)
     expect(chat.procesar(CHAT, BOTON_BAJA, 'Olga').map((x) => x.texto).join('\n')).toBe(BAJA_PEDIR)
-    expect(listarNoEntendidos(db, true)).toHaveLength(0)
+    expect(mensajesGuardados(db)).toBe(0)
   })
 
   it('el envío a Telegram se reintenta si falla, en vez de perder la respuesta', async () => {

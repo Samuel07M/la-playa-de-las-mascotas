@@ -12,7 +12,6 @@ import { registrarEntrada } from '../modules/entradas'
 import { registrarBaja } from '../modules/bajas'
 import { stockDe } from '../modules/movimientos'
 import { listarProductos } from '../modules/productos'
-import { registrarMensaje } from '../modules/mensajes'
 import { estaAutorizado, tecladoPrincipal, type Teclado } from './logica'
 import {
   MOVIMIENTO_NO_ENTENDIDO,
@@ -21,6 +20,7 @@ import {
   bajaExito,
   bajaRechazada,
   entradaExito,
+  productosNoEntendidos,
   ventaExito
 } from './textos'
 import { parsearVenta, resolverProductos, resumenCantidades, resumenVenta, type LineaResuelta } from './ventas'
@@ -28,7 +28,7 @@ import {
   avanzar,
   bajaRecibirLineas,
   entradaRecibirLineas,
-  noEntendido,
+  pedirReescribir,
   registrado,
   ventaRechazada,
   ventaRecibirLineas,
@@ -65,11 +65,6 @@ export class ManejadorChat {
     return this.estados.get(chatId) ?? { tipo: 'inactivo' }
   }
 
-  /** Guarda el mensaje como "no entendido" para que Isabel lo revise (HU-15 / punto 5 acordado). */
-  private guardarPendiente(texto: string, usuario: string): void {
-    registrarMensaje(this.db, { texto, usuario, estado: 'no_entendido' })
-  }
-
   procesar(chatId: number, texto: string, usuario: string): RespuestaChat[] {
     if (!estaAutorizado(chatId, this.autorizados)) {
       return [{ texto: NO_AUTORIZADO }]
@@ -82,7 +77,7 @@ export class ManejadorChat {
       const efecto = transicion.efecto
       switch (efecto.tipo) {
         case 'parsear':
-          transicion = this.manejarParseo(efecto.operacion, efecto.texto, usuario)
+          transicion = this.manejarParseo(efecto.operacion, efecto.texto)
           break
         case 'registrar_venta':
           transicion = this.registrarVenta(efecto)
@@ -101,22 +96,23 @@ export class ManejadorChat {
     return transicion.salidas.map(salidaARespuesta)
   }
 
-  private manejarParseo(operacion: Operacion, texto: string, usuario: string): Transicion {
-    const avisoNoEntendido = operacion === 'venta' ? VENTA_NO_ENTENDIDA : MOVIMIENTO_NO_ENTENDIDO
+  /**
+   * Interpreta el mensaje con los productos. Si no lo entiende, no especula ni deja seguir: dice qué
+   * falló y vuelve a pedir el mensaje de la misma operación (no se guarda nada).
+   */
+  private manejarParseo(operacion: Operacion, texto: string): Transicion {
     const parseo = parsearVenta(texto)
     if (!parseo.ok) {
-      this.guardarPendiente(texto, usuario)
-      return noEntendido(avisoNoEntendido)
+      return pedirReescribir(operacion, operacion === 'venta' ? VENTA_NO_ENTENDIDA : MOVIMIENTO_NO_ENTENDIDO)
     }
     const resuelto = resolverProductos(this.db, parseo.partes, buscarProductos)
     if (!resuelto.ok) {
-      this.guardarPendiente(texto, usuario)
-      return noEntendido(avisoNoEntendido)
+      return pedirReescribir(operacion, productosNoEntendidos(resuelto.noReconocidos, resuelto.ambiguos, operacion === 'venta'))
     }
     if (operacion === 'entrada') return entradaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la entrada:', resuelto.lineas))
     if (operacion === 'baja') return bajaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la baja:', resuelto.lineas))
     // Venta: el stock se verifica justo después de resolver los productos, antes del resumen y del
-    // método de pago. Si algún producto no alcanza, se rechaza (no es "no entendido": no se guarda).
+    // método de pago. Si algún producto no alcanza, se rechaza.
     const faltantes = faltantesDeStock(this.db, resuelto.lineas)
     if (faltantes.length) return ventaRechazada(M.ventaSinStock(faltantes))
     return ventaRecibirLineas(resuelto.lineas, resumenVenta(resuelto.lineas, money))

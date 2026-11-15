@@ -1,6 +1,6 @@
 // Interpretación del mensaje de venta del chat (HU-11), lógica pura y testeable.
 // Opción A acordada: formato mínimo «<número> <alias>», partes separadas por "y", comas o
-// saltos de línea. Todo lo que no calce es un mensaje "no entendido" (lo revisa Isabel, HU-15).
+// saltos de línea. Todo lo que no calce es un mensaje "no entendido": el bot pide reescribirlo.
 // No se especula: si falta el número o el alias no se reconoce sin ambigüedad, no se interpreta.
 
 import type { BaseDeDatos } from '../db/connection'
