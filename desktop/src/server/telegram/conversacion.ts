@@ -261,10 +261,10 @@ export function pedirReescribir(operacion: Operacion, aviso: string): Transicion
 }
 
 /**
- * La venta supera el stock: se RECHAZA (regla de negocio HU-03, docs/PREGUNTAS.md 34). No se pide el
- * método de pago ni una segunda confirmación; vuelve a inactivo con el teclado principal.
+ * La venta o la baja supera el stock: se RECHAZA (HU-03 y HU-12, docs/PREGUNTAS.md 34 y 37). No se
+ * pide el método de pago, el motivo ni una confirmación; vuelve a inactivo con el teclado principal.
  */
-export function ventaRechazada(aviso: string): Transicion {
+export function rechazadaPorStock(aviso: string): Transicion {
   return { estado: { tipo: 'inactivo' }, salidas: [{ texto: aviso, teclado: tecladoPrincipal() }] }
 }
 

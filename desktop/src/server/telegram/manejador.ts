@@ -37,7 +37,7 @@ import {
   entradaRecibirLineas,
   pedirReescribir,
   registrado,
-  ventaRechazada,
+  rechazadaPorStock,
   ventaRecibirLineas,
   type Estado,
   type Operacion,
@@ -120,11 +120,17 @@ export class ManejadorChat {
       return pedirReescribir(operacion, productosNoEntendidos(resuelto.noReconocidos, resuelto.ambiguos, operacion === 'venta'))
     }
     if (operacion === 'entrada') return entradaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la entrada:', resuelto.lineas))
-    if (operacion === 'baja') return bajaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la baja:', resuelto.lineas))
+    if (operacion === 'baja') {
+      // Baja: el stock se verifica justo después de resolver los productos, antes de pedir el motivo
+      // y la confirmación (igual que la venta). Si algún producto no alcanza, se rechaza.
+      const supera = this.bajaQueSuperaStock(resuelto.lineas)
+      if (supera) return rechazadaPorStock(bajaRechazada(supera.nombre, supera.stock))
+      return bajaRecibirLineas(resuelto.lineas, resumenCantidades('Resumen de la baja:', resuelto.lineas))
+    }
     // Venta: el stock se verifica justo después de resolver los productos, antes del resumen y del
     // método de pago. Si algún producto no alcanza, se rechaza.
     const faltantes = faltantesDeStock(this.db, resuelto.lineas)
-    if (faltantes.length) return ventaRechazada(M.ventaSinStock(faltantes))
+    if (faltantes.length) return rechazadaPorStock(M.ventaSinStock(faltantes))
     return ventaRecibirLineas(resuelto.lineas, resumenVenta(resuelto.lineas, money))
   }
 
@@ -160,7 +166,7 @@ export class ManejadorChat {
     } catch (e) {
       // Respaldo: el backend vuelve a verificar el stock al confirmar (pudo cambiar mientras se
       // elegía el pago, p. ej. una venta en la app). Si ya no alcanza, la venta se rechaza.
-      if (e instanceof ErrorApi && e.status === 400 && e.extra?.productos) return ventaRechazada(e.message)
+      if (e instanceof ErrorApi && e.status === 400 && e.extra?.productos) return rechazadaPorStock(e.message)
       throw e
     }
   }
@@ -173,13 +179,28 @@ export class ManejadorChat {
     return registrado(entradaExito(r.referencia, r.productos))
   }
 
-  private registrarBaja(efecto: { lineas: LineaResuelta[]; motivo: MotivoBaja }): Transicion {
-    // Punto 4 acordado: la baja que supera el stock se rechaza, sin registrar ninguna de las líneas.
-    // Se valida todo antes de escribir; registrarBaja además es transaccional por línea.
-    for (const l of efecto.lineas) {
-      const stock = stockDe(this.db, l.productoId)
-      if (l.cantidad > stock) return registrado(bajaRechazada(l.nombre, stock))
+  /**
+   * Primer producto de la baja cuya cantidad supera el stock actual (sumando las líneas repetidas
+   * del mismo producto), o null si todo alcanza.
+   */
+  private bajaQueSuperaStock(lineas: LineaResuelta[]): { nombre: string; stock: number } | null {
+    const pedido = new Map<number, { nombre: string; cantidad: number }>()
+    for (const l of lineas) {
+      const previo = pedido.get(l.productoId)
+      pedido.set(l.productoId, { nombre: l.nombre, cantidad: (previo?.cantidad ?? 0) + l.cantidad })
     }
+    for (const [productoId, { nombre, cantidad }] of pedido) {
+      const stock = stockDe(this.db, productoId)
+      if (cantidad > stock) return { nombre, stock }
+    }
+    return null
+  }
+
+  private registrarBaja(efecto: { lineas: LineaResuelta[]; motivo: MotivoBaja }): Transicion {
+    // Respaldo (punto 4 acordado): el stock pudo cambiar mientras se elegía el motivo. Si ya no
+    // alcanza, se rechaza sin registrar ninguna línea. registrarBaja además valida cada línea.
+    const supera = this.bajaQueSuperaStock(efecto.lineas)
+    if (supera) return rechazadaPorStock(bajaRechazada(supera.nombre, supera.stock))
     for (const l of efecto.lineas) {
       registrarBaja(this.db, { productoId: l.productoId, cantidad: l.cantidad, motivo: efecto.motivo })
     }

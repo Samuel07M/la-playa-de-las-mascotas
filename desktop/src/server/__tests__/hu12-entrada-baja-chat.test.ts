@@ -5,12 +5,15 @@ import { stockDe } from '../modules/movimientos'
 import { listarBajas } from '../modules/bajas'
 import { entradasRecientes } from '../modules/entradas'
 import { ManejadorChat } from '../telegram/manejador'
+import { tecladoPrincipal } from '../telegram/logica'
+import { registrarVenta } from '../modules/ventas'
 import {
   BOTON_BAJA,
   BOTON_CANCELAR,
   BOTON_CONFIRMAR,
   BOTON_ENTRADA,
   BOTON_VENCIDO,
+  BAJA_PEDIR_MOTIVO,
   MOVIMIENTO_NO_ENTENDIDO
 } from '../telegram/textos'
 
@@ -96,17 +99,47 @@ describe('HU-12 · Registrar bajas por mensaje', () => {
     expect(listarBajas(db)).toHaveLength(2)
   })
 
-  it('C/punto 4: baja que supera el stock se RECHAZA y no registra ninguna línea', () => {
+  it('C/punto 4: baja que supera el stock se RECHAZA antes de pedir el motivo y no registra ninguna línea', () => {
     const { db, chow, arena } = tienda() // ambos con stock 10
     const chat = new ManejadorChat(db, AUTORIZADOS)
     chat.procesar(CHAT, BOTON_BAJA, 'Alirio')
-    chat.procesar(CHAT, '2 dog chow y 15 arena', 'Alirio') // arena supera el stock
+    const r = chat.procesar(CHAT, '2 dog chow y 15 arena', 'Alirio') // arena supera el stock
+    const texto = r.map((x) => x.texto).join('\n')
+    expect(texto).toBe(
+      'No se puede dar de baja «Arena para gato»: la cantidad supera el stock actual (10). No se registró ninguna baja.'
+    )
+    // No se mostró el resumen ni se pidió el motivo: vuelve al menú principal.
+    expect(texto).not.toContain('Resumen de la baja')
+    expect(texto).not.toContain(BAJA_PEDIR_MOTIVO)
+    expect(r.at(-1)!.teclado).toEqual(tecladoPrincipal())
+    // Tocar un motivo o Confirmar después no registra nada.
     chat.procesar(CHAT, BOTON_VENCIDO, 'Alirio')
-    const r = chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
-    expect(r.map((x) => x.texto).join('\n')).toContain('supera el stock')
+    chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
     // Ninguna baja se registró, ni siquiera la de dog chow que sí cabía.
     expect(stockDe(db, chow)).toBe(10)
     expect(stockDe(db, arena)).toBe(10)
+    expect(listarBajas(db)).toHaveLength(0)
+  })
+
+  it('suma las partes repetidas del mismo producto: juntas superan el stock y se rechaza', () => {
+    const { db, chow } = tienda()
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    chat.procesar(CHAT, BOTON_BAJA, 'Olga')
+    const r = chat.procesar(CHAT, '6 dog chow y 5 dog chow', 'Olga')
+    expect(r.map((x) => x.texto).join('\n')).toContain('«Concentrado Dog Chow Adulto 8kg»: la cantidad supera el stock actual (10)')
+    expect(stockDe(db, chow)).toBe(10)
+  })
+
+  it('respaldo: si el stock bajó mientras se elegía el motivo, se rechaza al confirmar', () => {
+    const { db, arena } = tienda()
+    const chat = new ManejadorChat(db, AUTORIZADOS)
+    chat.procesar(CHAT, BOTON_BAJA, 'Alirio')
+    chat.procesar(CHAT, '8 arena', 'Alirio')
+    chat.procesar(CHAT, BOTON_VENCIDO, 'Alirio')
+    registrarVenta(db, { metodoPago: 'efectivo', lineas: [{ productoId: arena, cantidad: 5 }] }) // quedan 5
+    const r = chat.procesar(CHAT, BOTON_CONFIRMAR, 'Alirio')
+    expect(r.map((x) => x.texto).join('\n')).toContain('supera el stock actual (5)')
+    expect(r.at(-1)!.teclado).toEqual(tecladoPrincipal())
     expect(listarBajas(db)).toHaveLength(0)
   })
 
