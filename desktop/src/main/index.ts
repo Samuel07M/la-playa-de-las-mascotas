@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { mkdirSync } from 'node:fs'
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog, Menu, shell } from 'electron'
 import type { FastifyInstance } from 'fastify'
 import { abrirBaseDeDatos, type BaseDeDatos } from '../server/db/connection'
 import { crearApp } from '../server/app'
@@ -12,6 +12,8 @@ import { API_HOST, API_PORT } from '../shared/config'
 let ventana: BrowserWindow | null = null
 let servidor: FastifyInstance | null = null
 let bot: Bot | null = null
+
+const TITULO = 'La Playa de las Mascotas'
 
 // Una sola instancia: no puede haber dos APIs sobre la misma base de datos.
 if (!app.requestSingleInstanceLock()) {
@@ -73,7 +75,17 @@ async function iniciar(): Promise<void> {
   crearVentana()
 }
 
+/**
+ * Icono de la ventana y de la barra de tareas. Instalada: se copia junto a los recursos de la app
+ * (extraResources de electron-builder.yml). Desarrollo: desktop/resources/icon.ico.
+ */
+function rutaIcono(): string {
+  return app.isPackaged ? join(process.resourcesPath, 'icon.ico') : join(app.getAppPath(), 'resources', 'icon.ico')
+}
+
 function crearVentana(): void {
+  // En la app instalada no hay menú de Electron (Archivo, Ver, DevTools…): solo la app.
+  if (app.isPackaged) Menu.setApplicationMenu(null)
   ventana = new BrowserWindow({
     width: 1280,
     height: 820,
@@ -81,13 +93,18 @@ function crearVentana(): void {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    title: 'La Playa de las Mascotas',
+    title: TITULO,
+    icon: rutaIcono(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
-      contextIsolation: true
+      contextIsolation: true,
+      // Sin herramientas de desarrollo en la app instalada.
+      devTools: !app.isPackaged
     }
   })
+  // El título de la ventana es siempre el nombre de la tienda (no el <title> de la página).
+  ventana.on('page-title-updated', (e) => e.preventDefault())
   ventana.on('ready-to-show', () => ventana?.show())
   ventana.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url)

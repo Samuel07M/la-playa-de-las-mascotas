@@ -6,6 +6,11 @@ directories:
 files:
   - out/**/*
   - package.json
+# Icono para la ventana y la barra de tareas (main/index.ts lo lee de process.resourcesPath).
+extraResources:
+  - from: resources/icon.ico
+    to: icon.ico
+# better-sqlite3 es un módulo nativo: se deja fuera del .asar para que Windows pueda cargarlo.
 asarUnpack:
   - node_modules/better-sqlite3/**
 win:
@@ -15,8 +20,16 @@ win:
       arch: [x64]
 nsis:
   oneClick: false
+  perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
+  createStartMenuShortcut: true
   shortcutName: La Playa de las Mascotas
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
+  # Los datos (playa.db, .env, telegram.log) viven en %APPDATA%\La Playa de las Mascotas y NO se
+  # borran al desinstalar, actualizar o reinstalar.
+  deleteAppDataOnUninstall: false
   artifactName: La-Playa-de-las-Mascotas-Setup-${version}.${ext}
 npmRebuild: false
