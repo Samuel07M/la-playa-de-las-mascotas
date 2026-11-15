@@ -25,7 +25,7 @@ PC de la tienda (Windows)
 │                 ▲ HTTP/JSON                                    │
 │  ┌──────────────┴─── proceso renderer (ventana) ──────────┐  │
 │  │  React: Catálogo · Nueva venta · Entradas · Bajas ·     │  │
-│  │  Inventario · Proveedores · Cuadre · Reportes · Mensajes│  │
+│  │  Inventario · Proveedores · Cuadre · Reportes           │  │
 │  └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
         (después) celulares en el wifi de la tienda → misma API (chat)
@@ -93,7 +93,7 @@ la-playa-de-las-mascotas/
         │   ├── db/seed.ts          ← datos de ejemplo del mockup (solo demo)
         │   ├── modules/            ← un archivo de rutas + uno de lógica por dominio
         │   │   ├── productos.ts  alias.ts  ventas.ts  entradas.ts  bajas.ts
-        │   │   ├── inventario.ts proveedores.ts cuadres.ts reportes.ts mensajes.ts
+        │   │   ├── inventario.ts proveedores.ts cuadres.ts reportes.ts
         │   └── __tests__/          ← pruebas Vitest
         └── renderer/
             ├── index.html
@@ -122,6 +122,7 @@ cuadres_caja     (id, dia, total_efectivo, total_digital, efectivo_contado, dife
                   usuario, creado_en)                                              -- HU-08
 mensajes         (id, texto, usuario, fecha, estado ∈ {confirmado,corregido,no_entendido},
                   revisado)                                                         -- HU-14/15
+                 -- Desde el 14/11/2026 la tabla se conserva pero ya no se usa (PREGUNTAS 35).
 ```
 
 - **Cómo se llena `movimientos`**, igual que en el mockup:
@@ -147,7 +148,7 @@ mensajes         (id, texto, usuario, fecha, estado ∈ {confirmado,corregido,no
 | 07 | `GET/POST/PUT /proveedores` · `PATCH /proveedores/:id/activo` · `POST /proveedores/:id/precios` · `GET /productos/:id/precios` | Sin eliminar: solo desactivar |
 | 08 | `GET /cuadres/dia?fecha=` · `POST /cuadres` · `GET /cuadres` | Día sin ventas → ceros |
 | 09 | `GET /reportes/rotacion` · `GET /reportes/top-productos` · `GET /reportes/proveedores` | Mensaje claro si no hay datos |
-| 15 | `GET /mensajes?pendientes=1` · `POST /mensajes/:id/alias` · `PATCH /mensajes/:id/revisado` | Los mensajes los escribirá el chat |
+| 15 | ~~`GET /mensajes?pendientes=1` · `POST /mensajes/:id/alias` · `PATCH /mensajes/:id/revisado`~~ | Retiradas el 14/11/2026: el bot maneja los mensajes que no entiende y no se avisa a la administradora (PREGUNTAS 35) |
 
 - **Errores:** siempre `{ error: { campo?: string, mensaje: string } }`, con los textos exactos del mockup, para que React los muestre debajo de cada campo.
 - **Usuario de los movimientos:** fijo en `Isabel`, como en el mockup, hasta que se defina otra cosa (ver preguntas).
@@ -257,7 +258,7 @@ Usa la plantilla de la sección 6. En cada HU, pide que los cambios se reflejen 
 | HU-07 Proveedores | Confirmar que el precio es **de compra** y qué "datos de contacto" se guardan |
 | HU-08 Cuadre de caja | Ninguna |
 | HU-09 Reportes | Definir de dónde salen las "compras" y los umbrales de rotación alta/media/baja |
-| HU-15 Mensajes no entendidos | Acordar con quien haga el chat la tabla `mensajes` (sección 4) |
+| HU-15 Mensajes no entendidos | Retirada de la app el 14/11/2026 (PREGUNTAS 35); la HU se reescribirá |
 
 Estas pantallas no tienen mockup:
 - Se construyen **solo con los componentes y estilos que ya existen en el mockup** (card, tb, tag, bar, in, b pri, modal, toast, alert).
@@ -282,7 +283,7 @@ Antes de escribir la interfaz, muéstrame un boceto en texto de la pantalla para
 4. Evidencias: fotos de la instalación, acta de la reunión y capturas de la app con datos reales.
 
 ### Fase 5 — Video tutorial
-Recorrido de 5 a 8 minutos con datos de demostración (`npm run seed`), en el orden del menú: catálogo y alias, venta (mostrar el cronómetro), entrada, baja, inventario con alertas y verificación, proveedores, cuadre, reportes y mensajes. Súbelo como no listado a YouTube o a OneDrive de EAFIT y pon la URL en la Sección 4.
+Recorrido de 5 a 8 minutos con datos de demostración (`npm run seed`), en el orden del menú: catálogo y alias, venta (mostrar el cronómetro), entrada, baja, inventario con alertas y verificación, proveedores, cuadre y reportes. Súbelo como no listado a YouTube o a OneDrive de EAFIT y pon la URL en la Sección 4.
 
 ---
 
