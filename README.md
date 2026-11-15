@@ -236,13 +236,63 @@ Metas acordadas para evaluar la solución:
 | `npm run typecheck` | Verifica los tipos (Node + interfaz) sin generar archivos. |
 | `npm test` | Ejecuta las pruebas con Vitest sobre el binario de Electron. |
 | `npm run build` | Compila la aplicación (sin generar instalador). |
-| `npm run build:win` | Compila y genera el instalador NSIS para Windows en `desktop/dist/`. |
+| `npm run build:win` | Compila y genera el instalador NSIS para Windows en `desktop/dist/` (también en GitHub Actions: workflow «Instalador Windows»). |
 
 ### Instalación en el equipo de la tienda
 
-1. Ejecutar `npm run build:win` para generar `La-Playa-de-las-Mascotas-Setup-<versión>.exe` en `desktop/dist/`.
-2. Copiar ese instalador al equipo de la administradora y ejecutarlo. El instalador permite elegir la carpeta de instalación y crea acceso directo en el escritorio.
-3. Al abrir la aplicación, la base de datos se crea automáticamente en la carpeta de datos del usuario de Windows; no requiere configuración adicional.
+Esta guía es para instalar la app en el PC de la tienda (Windows 10 u 11), paso a paso. No se necesita saber programar.
+
+**a) Conseguir el instalador**
+
+El instalador es un solo archivo: `La-Playa-de-las-Mascotas-Setup-1.0.0.exe`. Hay dos formas de obtenerlo:
+
+- **Desde GitHub (no requiere tener Windows con el proyecto):** en el repositorio, abre la pestaña **Actions** → **Instalador Windows** → **Run workflow** → **Run workflow**. Cuando termine (marca verde, unos 10 minutos), entra a esa ejecución y, abajo en **Artifacts**, descarga `instalador-windows`. Es un `.zip`: ábrelo y saca el `.exe`. También se genera solo al subir un tag que empiece por `v` (por ejemplo `v1.0.0`).
+- **En un PC con Windows y el proyecto:** dentro de `desktop/`, corre `npm run build:win`. El archivo queda en `desktop/dist/`.
+
+Copia el `.exe` al PC de la tienda (por USB, correo o Drive).
+
+**b) Instalar**
+
+1. Haz doble clic en el `.exe`.
+2. Si aparece la ventana azul **«Windows protegió su PC»**, es normal: el instalador no está firmado digitalmente. Toca **«Más información»** y luego **«Ejecutar de todas formas»**.
+3. Sigue el asistente (puedes dejar la carpeta que propone) y toca **Instalar**. Al final queda un acceso directo **La Playa de las Mascotas** en el escritorio y en el menú Inicio.
+
+**c) Abrir la app una vez y cerrarla**
+
+Abre la app desde el acceso directo. La primera vez crea su base de datos **vacía**, sin productos de ejemplo. Isabel empieza a cargar el catálogo desde cero. Luego ciérrala.
+
+**d) Configurar el chat de Telegram (archivo `.env`)**
+
+1. Presiona las teclas **Windows + R**, escribe `%APPDATA%\La Playa de las Mascotas` y presiona **Enter**. Se abre la carpeta de datos de la app (ahí está `playa.db`).
+2. Copia en esa carpeta el archivo `.env.ejemplo` que está en la raíz del repositorio y cámbiale el nombre a **`.env`**: sin «.ejemplo» y sin «.txt» al final. Para ver la extensión real, en el Explorador activa **Vista → Mostrar → Extensiones de nombre de archivo**.
+3. Abre `.env` con el Bloc de notas y escribe después de cada `=`, sin espacios ni comillas:
+   - `TELEGRAM_BOT_TOKEN=`: el token del bot. Lo da **@BotFather** en Telegram al crear el bot (`/newbot`); si ya existe, con `/mybots` → el bot → **API Token**. Se ve así: `123456789:AAE…`.
+   - `TELEGRAM_CHATS_AUTORIZADOS=`: los chat IDs de Alirio y Olga separados por coma, por ejemplo `111111111,222222222`.
+4. **Cómo obtener el chat ID de cada persona** (por ahora deja `TELEGRAM_CHATS_AUTORIZADOS=` vacío y guarda el `.env` solo con el token):
+   1. Abre la app.
+   2. Alirio, desde su celular, busca el bot en Telegram y le escribe `/start`. El bot le dirá que el chat es solo para el personal: es normal. Olga hace lo mismo.
+   3. En la misma carpeta abre `telegram.log` con el Bloc de notas. Aparece una línea por cada uno, así: `Mensaje de un chat no autorizado: 123456789 (Alirio)…`. Ese número es su chat ID.
+   4. Cierra la app y escribe los dos números en el `.env`: `TELEGRAM_CHATS_AUTORIZADOS=123456789,987654321`. Guarda.
+
+   Otra forma: cada persona le escribe a **@userinfobot** en Telegram, y ese bot le responde con su **Id**.
+
+**e) Probar el bot**
+
+Vuelve a abrir la app. Desde el celular de Alirio u Olga, escribe `/start` al bot: debe responder el saludo con los botones «Registrar venta», «Registrar entrada», «Registrar baja» y «Consultar precio y stock». Si no responde, abre `telegram.log`: ahí queda si no encontró el token, si un chat no está autorizado o si hubo un error de red.
+
+**f) Dónde quedan los datos y cómo hacer una copia de seguridad**
+
+- Todo queda en `%APPDATA%\La Playa de las Mascotas`:
+  - `playa.db`: la base de datos con productos, ventas, entradas, bajas, proveedores y cuadres.
+  - `.env`: la configuración del chat.
+  - `telegram.log`: el registro del bot.
+- **Copia de seguridad:** cierra la app y copia `playa.db` a una memoria USB o a Drive, con la fecha en el nombre (ej. `playa-2026-11-14.db`). Si existen `playa.db-wal` y `playa.db-shm`, cópialos también. Hazlo al menos una vez por semana.
+- **Para restaurar:** con la app cerrada, pon la copia en esa carpeta con el nombre `playa.db`.
+- Desinstalar, actualizar o reinstalar la app **no borra** esta carpeta: los datos se conservan. Para actualizar, basta con instalar el `.exe` nuevo encima.
+
+**g) Importante: el chat solo funciona con la app abierta**
+
+El chat de Telegram de Alirio y Olga **solo responde mientras la app esté abierta en el PC de la tienda** (y el PC con internet). Si la app está cerrada o el PC apagado, el bot no responde. Telegram guarda los mensajes hasta por 24 horas y el bot los atiende cuando se vuelve a abrir la app, pero lo seguro es registrar solo cuando el bot conteste. Lo recomendado es abrir la app al llegar y dejarla abierta durante toda la jornada.
 
 ### Notas
 
