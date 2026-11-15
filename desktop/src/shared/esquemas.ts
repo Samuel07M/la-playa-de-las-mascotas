@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import { CATEGORIAS, METODOS_PAGO, MOTIVOS_BAJA } from './constantes'
 
+// Respaldo: cualquier validación de Zod sin mensaje propio responde en español, no en inglés
+// («Invalid option: expected one of…»). Los campos de la API llevan además su mensaje sencillo (M).
+z.config(z.locales.es())
+
 // Mensajes copiados literalmente del mockup aprobado.
 export const M = {
   nombre: 'El nombre es obligatorio.',
@@ -29,6 +33,11 @@ export const M = {
   rango: 'La fecha inicial no puede ser posterior a la final.',
   efectivoContado: 'Indica el efectivo contado (entero, 0 o más).',
   digitalContado: 'Indica el monto digital recibido (entero, 0 o más).',
+  // Validaciones de la API sin texto en el mockup: mensajes cortos en español (PREGUNTAS 37).
+  metodoPago: 'Selecciona un método de pago: efectivo o digital.',
+  activo: 'Indica si queda activo o inactivo.',
+  texto: 'Escribe un texto válido.',
+  filtroActivos: 'El filtro de activos debe ser 0 o 1.',
   cuadreExiste: 'Ya hay un cuadre guardado para este día.'
 } as const
 
@@ -43,16 +52,16 @@ export const productoSchema = z.object({
 })
 export type ProductoEntrada = z.infer<typeof productoSchema>
 
-export const activoSchema = z.object({ activo: z.boolean() })
+export const activoSchema = z.object({ activo: z.boolean({ error: M.activo }) })
 
 export const aliasSchema = z.object({
   texto: z.string({ error: M.alias }).trim().min(1, M.alias)
 })
 
 export const ventaSchema = z.object({
-  metodoPago: z.enum(METODOS_PAGO),
+  metodoPago: z.enum(METODOS_PAGO, { error: M.metodoPago }),
   lineas: z
-    .array(z.object({ productoId: id(M.productoExistente), cantidad }))
+    .array(z.object({ productoId: id(M.productoExistente), cantidad }, { error: M.productoExistente }), { error: M.productoExistente })
     .min(1, M.productoExistente)
 })
 export type VentaEntrada = z.infer<typeof ventaSchema>
@@ -62,7 +71,7 @@ export const entradaSchema = z.object({
   /** Proveedor opcional de la recepción (compras del reporte de proveedores, HU-09). */
   proveedorId: id(M.proveedorActivo).nullish(),
   lineas: z
-    .array(z.object({ productoId: id(M.productoExistente), cantidad }))
+    .array(z.object({ productoId: id(M.productoExistente), cantidad }, { error: M.productoExistente }), { error: M.productoExistente })
     .min(1, M.productoExistente)
 })
 export type EntradaEntrada = z.infer<typeof entradaSchema>
@@ -71,7 +80,7 @@ export const bajaSchema = z.object({
   productoId: id(M.productoBaja),
   cantidad,
   motivo: z.enum(MOTIVOS_BAJA, { error: M.motivoBaja }),
-  detalle: z.string().trim().optional()
+  detalle: z.string({ error: M.texto }).trim().optional()
 })
 export type BajaEntrada = z.infer<typeof bajaSchema>
 
@@ -85,7 +94,7 @@ export const fechaDia = z
   }, M.fecha)
 
 const opcional = z
-  .string()
+  .string({ error: M.texto })
   .trim()
   .nullish()
   .transform((v) => v || null)

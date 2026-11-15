@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { BaseDeDatos } from '../db/connection'
-import { activoSchema, productoSchema } from '../../shared/esquemas'
+import { activoSchema, M, productoSchema } from '../../shared/esquemas'
 import { noExiste, validar } from '../errores'
 import { actualizarProducto, cambiarActivo, crearProducto, listarProductos } from './productos'
 
@@ -13,8 +13,8 @@ export function idDe(params: unknown, mensaje = 'El producto no existe.'): numbe
 }
 
 const filtroSchema = z.object({
-  q: z.string().optional(),
-  activos: z.enum(['0', '1']).optional()
+  q: z.string({ error: M.texto }).optional(),
+  activos: z.enum(['0', '1'], { error: M.filtroActivos }).optional()
 })
 
 export function rutasProductos(app: FastifyInstance, db: BaseDeDatos): void {

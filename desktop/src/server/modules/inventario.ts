@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { BaseDeDatos } from '../db/connection'
-import { fechaDia } from '../../shared/esquemas'
+import { fechaDia, M } from '../../shared/esquemas'
 import type { FilaInventario, Verificacion } from '../../shared/tipos'
 import { validar } from '../errores'
 import { listarMovimientos, stockDe, stocks, sumaMovimientos } from './movimientos'
@@ -38,7 +38,7 @@ export function verificar(db: BaseDeDatos, productoId: number): Verificacion {
 }
 
 const filtroSchema = z.object({
-  productoId: z.coerce.number().int().positive().optional(),
+  productoId: z.coerce.number({ error: M.productoExistente }).int(M.productoExistente).positive(M.productoExistente).optional(),
   desde: fechaDia.optional(),
   hasta: fechaDia.optional()
 })
