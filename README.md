@@ -13,7 +13,7 @@ La solución se construye sobre un principio: **un solo backend y dos clientes**
 | Componente | Usuario | Descripción |
 |---|---|---|
 | **Aplicación de escritorio** | Administradora | Catálogo, ventas, entradas, bajas, inventario, proveedores, cuadre de caja y reportes. |
-| **Chat operativo** | Personal de mostrador | Interfaz de mensajería desde el celular para reportar ventas, entradas y bajas con mensajes cortos. Es su única interfaz. |
+| **Chat operativo (bot de Telegram)** | Personal de mostrador | Bot de Telegram en el celular para reportar ventas, entradas y bajas y consultar precio y stock, con botones y mensajes cortos. Es su única interfaz. |
 | **Backend compartido** | — | API y base de datos únicas: catálogo, ventas, movimientos de stock y registro de mensajes. |
 
 ---
@@ -49,6 +49,8 @@ Causas raíz identificadas: no hay un procedimiento estandarizado para registrar
 | **Administradora** | Dueña del negocio. Dirección general. Product Owner del proyecto. | Aplicación de escritorio | Maneja Excel, portales bancarios y de la DIAN. Toma las decisiones de compra. |
 | **Auxiliar de logística** | Logística, domicilios y despachos. | Chat operativo | **Baja alfabetización digital.** Hoy usa la libreta y WhatsApp. |
 | **Auxiliar comercial** | Ventas y atención al cliente. | Chat operativo | **Baja alfabetización digital.** Hoy usa la libreta y WhatsApp. |
+
+En la tienda, la administradora es Isabel y el personal de mostrador son Alirio y Olga.
 
 **El personal de mostrador (auxiliares) no accede a la aplicación de escritorio.** Su adopción es el principal riesgo del proyecto.
 
@@ -93,8 +95,8 @@ Cuatro procesos del negocio:
 
 ```
 ┌──────────────────────┐        ┌──────────────────────┐
-│ Aplicación escritorio│        │   Chat operativo     │
-│  (Administradora)    │        │ (Personal mostrador) │
+│ Aplicación escritorio│        │ Chat operativo       │
+│  (Administradora)    │        │ (Telegram, mostrador)│
 └──────────┬───────────┘        └──────────┬───────────┘
            │                               │
            └────────────┬──────────────────┘
@@ -114,8 +116,7 @@ Cuatro procesos del negocio:
 - **Stock = entradas − ventas − bajas.** Esta invariante debe cumplirse siempre; el sistema la muestra y verifica.
 - Cada venta descuenta stock automáticamente.
 - Tres tipos de movimiento: `venta`, `entrada`, `baja`. Cada uno guarda usuario y fecha.
-- Una venta que supera el stock disponible **se rechaza** (igual que las bajas): no se registra ninguna línea y se indica el stock disponible de cada producto. El stock nunca puede quedar negativo. Las cantidades del mismo producto repetido en varias líneas se suman antes de comparar.
-- Una baja que supera el stock actual **sí se rechaza**.
+- Una venta o una baja que supera el stock disponible **se rechaza**: no se registra ninguna línea y se indica el stock disponible de cada producto. El stock nunca puede quedar negativo. En una venta, las cantidades del mismo producto repetido en varias líneas se suman antes de comparar. En el chat, el stock se verifica antes de pedir el método de pago y la confirmación.
 - Las bajas requieren un motivo: `vencido`, `dañado` u `otro`.
 - Las entradas requieren referencia de factura o remisión; una recepción puede incluir varios productos con la misma referencia.
 - Un producto desactivado no aparece en los selectores de venta, entrada o baja, pero su historial se conserva.
@@ -129,7 +130,7 @@ Cuatro procesos del negocio:
 | Lenguaje y framework del backend | **TypeScript** con **Fastify 5** y validación con **Zod 4**. API local embebida en el proceso principal de Electron, escuchando en `127.0.0.1:3210`. |
 | Base de datos | **SQLite** a través de **better-sqlite3** (SQL plano, sin ORM). Archivo único `playa.db`: en desarrollo `desktop/dev-data/playa.db`; instalada, en la carpeta de datos de la app del usuario (Windows). |
 | Aplicación de escritorio | **Electron 42** empaquetado con **electron-vite**; interfaz en **React 19** + TypeScript. |
-| Chat operativo (web móvil / WhatsApp API / otro) | Chat propio dentro del mismo backend (rutas de mensajes en la API). WhatsApp queda fuera del alcance de esta versión. |
+| Chat operativo | **Bot de Telegram** que corre dentro del proceso principal de la app (`desktop/src/server/telegram/`). Se comunica con la API de Telegram por HTTP (`fetch` y *long polling*), sin librerías adicionales, y usa la misma base de datos. Se configura con un archivo `.env` (token del bot y chats autorizados). WhatsApp queda fuera del alcance de esta versión. |
 | Dónde se despliega (servidor, nube o equipo de la tienda) | **Equipo de la tienda (la administradora).** Instalador de Windows (**NSIS**, `electron-builder`) con API y base de datos embebidas; no requiere servidor ni nube. |
 
 Restricciones: costo mínimo o cero, el equipo está aprendiendo las herramientas, y el sistema debe poder instalarse en los recursos que ya tenga la tienda.
@@ -148,12 +149,12 @@ Metas acordadas para evaluar la solución:
 ## 8. Convenciones para el desarrollo
 
 - **Idioma:** interfaz, mensajes de error y documentación de usuario en español. Nombres de código a criterio del equipo, pero consistentes.
-- **Cada historia de usuario debe cumplir todos sus criterios de aceptación.** Los mensajes de la sección 7 son el texto esperado en pantalla; úselos literalmente.
+- **Cada historia de usuario debe cumplir todos sus criterios de aceptación.** Los mensajes que aparecen en los criterios de aceptación son el texto esperado en pantalla; úselos literalmente.
 - **Validar siempre en el backend**, no solo en la interfaz (cantidades enteras positivas, productos existentes y activos, precios > 0, motivo obligatorio en bajas, referencia obligatoria en entradas).
 - **Nunca borrar movimientos.** Las correcciones se hacen con movimientos nuevos.
 - **Moneda:** pesos colombianos (COP), sin decimales en pantalla.
-- **Fechas:** formato DD/MM/AAAA, zona horaria de Colombia.
-- **Pruebas:** incluir pruebas para las reglas de negocio de la sección 6, en especial la invariante de stock y el rechazo de bajas que superan el stock.
+- **Fechas:** formato del mockup (día, mes abreviado y hora, por ejemplo «12 nov, 2:30 p. m.»), en zona horaria de Colombia (`desktop/src/shared/formato.ts`).
+- **Pruebas:** incluir pruebas para las reglas de negocio de la sección 6, en especial la invariante de stock y el rechazo de ventas y bajas que superan el stock.
 - **Datos de ejemplo:** usar productos reales de una tienda de mascotas (concentrados, collares, juguetes, camas) con alias cotidianos (ej. "chow", "pedigree") para pruebas y demostraciones.
 - **Ante la duda, elegir lo más simple** y dejar la pregunta documentada para el equipo en vez de ampliar el alcance.
 
