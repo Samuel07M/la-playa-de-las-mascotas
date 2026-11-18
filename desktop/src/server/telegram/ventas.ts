@@ -58,7 +58,7 @@ export type ResultadoResolucion =
 
 /**
  * Resuelve cada texto de producto a un producto activo del catálogo, usando las mismas reglas
- * de búsqueda del mockup (nombre, categoría o alias). Debe haber exactamente una coincidencia:
+ * de búsqueda del catálogo (nombre, categoría o alias). Debe haber exactamente una coincidencia:
  * - 0 coincidencias → no reconocido.
  * - 2 o más → ambiguo (se trata como no entendido; punto 4 acordado).
  * Las partes del mismo producto se suman en una sola línea.

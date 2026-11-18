@@ -1,4 +1,4 @@
-// HU-06 — Inventario (vInv, mvList del mockup).
+// HU-06 — Inventario.
 import { fd, capitalizar } from '@shared/formato'
 import type { FilaInventario, Movimiento, Producto, Verificacion } from '@shared/tipos'
 import { qs } from '../api'

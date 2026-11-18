@@ -1,5 +1,5 @@
-// HU-08 — Cuadre de caja. Sin mockup: solo componentes y clases del mockup.
-// Compara el monto total contado (efectivo + digital) con el total vendido (docs/PREGUNTAS.md, 25).
+// HU-08 — Cuadre de caja.
+// Compara el monto total contado (efectivo + digital) con el total vendido.
 import { useState } from 'react'
 import { cuadreSchema, erroresPorCampo, numeroDe } from '@shared/esquemas'
 import { fd, fdia, hoyColombia, money } from '@shared/formato'

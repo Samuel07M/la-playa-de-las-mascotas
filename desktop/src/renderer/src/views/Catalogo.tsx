@@ -1,4 +1,4 @@
-// HU-01 · HU-02 — Catálogo de productos (vCat, catList, pForm, pSave, tog del mockup).
+// HU-01 · HU-02 — Catálogo de productos.
 import { useState } from 'react'
 import { CATEGORIAS } from '@shared/constantes'
 import { erroresPorCampo, M, numeroDe, productoSchema } from '@shared/esquemas'
@@ -98,7 +98,7 @@ export default function Catalogo() {
   )
 }
 
-// HU-02 — aForm, aAdd y aDel del mockup.
+// HU-02 — Alias: formulario, agregar y eliminar.
 function AliasForm({ id }: { id: number }) {
   const { cerrarModal, toast, huboCambios } = useUi()
   const productos = usarDatos<Producto[]>('/productos')

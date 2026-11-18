@@ -254,14 +254,14 @@ export function bajaRecibirLineas(lineas: LineaResuelta[], resumen: string): Tra
 /**
  * El mensaje no se entendió (formato, producto no reconocido o ambiguo): el bot no avanza.
  * Sigue esperando los productos de la misma operación hasta recibir un mensaje válido o «Cancelar».
- * No se guarda ni se avisa a la administradora (cambio de HU-15, docs/PREGUNTAS.md 35).
+ * No se guarda ni se avisa a la administradora (cambio de HU-15).
  */
 export function pedirReescribir(operacion: Operacion, aviso: string): Transicion {
   return { estado: { tipo: 'esperando_productos', operacion }, salidas: [{ texto: aviso, teclado: tecladoCancelar() }] }
 }
 
 /**
- * La venta o la baja supera el stock: se RECHAZA (HU-03 y HU-12, docs/PREGUNTAS.md 34 y 37). No se
+ * La venta o la baja supera el stock: se RECHAZA (HU-03 y HU-12). No se
  * pide el método de pago, el motivo ni una confirmación; vuelve a inactivo con el teclado principal.
  */
 export function rechazadaPorStock(aviso: string): Transicion {

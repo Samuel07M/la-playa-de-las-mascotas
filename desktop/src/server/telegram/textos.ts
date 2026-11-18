@@ -1,6 +1,5 @@
 // Textos del chat de Telegram (canal de los operarios Alirio y Olga).
-// La restricción del mockup aplica solo a la app de escritorio; aquí los textos son propios,
-// en español sencillo y aprobados por el equipo (HU-10).
+// Textos en español sencillo, aprobados por el equipo (HU-10).
 
 export const SALUDO =
   '¡Hola! Soy el chat de La Playa de las Mascotas.\n\n' +
@@ -31,7 +30,7 @@ const REESCRIBIR = 'Escríbelo de nuevo o toca «Cancelar».'
 
 /**
  * El mensaje de la venta no sigue el formato: el bot lo dice y pide reescribirlo (no se guarda ni
- * se avisa a la administradora; cambio de HU-15 del 14/11/2026, docs/PREGUNTAS.md 35).
+ * se avisa a la administradora; cambio de HU-15 del 14/11/2026).
  */
 export const VENTA_NO_ENTENDIDA = 'No entendí el mensaje.\n\n' + VENTA_COMO_ESCRIBIR + '\n\n' + REESCRIBIR
 

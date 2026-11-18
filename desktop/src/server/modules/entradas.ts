@@ -35,7 +35,7 @@ export function registrarEntrada(
   })()
 }
 
-/** Últimas entradas agrupadas por referencia (sin el inventario inicial), como en el mockup. */
+/** Últimas entradas agrupadas por referencia (sin el inventario inicial). */
 export function entradasRecientes(db: BaseDeDatos, limite = 5): EntradaReciente[] {
   const grupos = db
     .prepare(

@@ -26,7 +26,7 @@ export function registrarBaja(db: BaseDeDatos, b: BajaEntrada, fecha?: string): 
 /** Historial de bajas, de la más reciente a la más antigua. */
 export const listarBajas = (db: BaseDeDatos): Movimiento[] => movimientosDeTipo(db, 'baja')
 
-/** Pérdidas por motivo, valoradas a precio de venta (como el mockup). Motivo más reciente primero. */
+/** Pérdidas por motivo, valoradas a precio de venta. Motivo más reciente primero. */
 export function resumenBajas(db: BaseDeDatos): ResumenBaja[] {
   return db
     .prepare(

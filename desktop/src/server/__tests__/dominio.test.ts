@@ -109,7 +109,7 @@ describe('Venta que supera el stock', () => {
 })
 
 describe('Seed de demostración', () => {
-  it('carga los datos del mockup', () => {
+  it('carga los datos de ejemplo', () => {
     const db = nuevaDb()
     seed(db)
     const ps = listarProductos(db)

@@ -11,7 +11,7 @@ import { hoyColombia } from '../../shared/formato'
 import { crearProveedor, registrarPrecio } from '../modules/proveedores'
 
 // Datos de demostración: los mismos 8 productos, alias, inventario inicial, venta V-000
-// y baja del mockup aprobado (función seed()). Solo se usa con `npm run seed`.
+// y baja de ejemplo. Solo se usa con `npm run seed`.
 const PRODUCTOS: [string, Categoria, number, number, string[], number, boolean][] = [
   ['Concentrado Dog Chow Adulto 8kg', 'Alimento perros', 62000, 5, ['dog chow', 'chow grande'], 12, true],
   ['Concentrado Gatsy Gatos 3kg', 'Alimento gatos', 38000, 4, ['gatsy'], 3, true],
@@ -80,8 +80,8 @@ export function seed(db: BaseDeDatos, ahora = Date.now()): void {
       { consecutivo: 'V-000', fecha: hace(2) }
     )
     registrarBaja(db, { productoId: ids[0], cantidad: 1, motivo: 'vencido' }, hace(1))
-    // Fase 3 (sin mockup): proveedores con historial de precios de compra (HU-07).
-    // No se agregan movimientos: el stock queda como en el mockup.
+    // Proveedores con historial de precios de compra (HU-07).
+    // No se agregan movimientos: el stock queda igual.
     const dia = (dias: number) => hoyColombia(ahora - dias * DIA)
     const prov = PROVEEDORES.map(([nombre, telefono, correo]) => crearProveedor(db, { nombre, telefono, correo }).id)
     for (const [pv, pr, precio, dias] of PRECIOS) {

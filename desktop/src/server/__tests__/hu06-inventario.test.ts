@@ -34,7 +34,7 @@ describe('HU-06 · Consultar stock, historial y alertas', () => {
     ])
   })
 
-  it('C2: con los datos del mockup alerta Gatsy y Dentastix', async () => {
+  it('C2: con los datos de ejemplo alerta Gatsy y Dentastix', async () => {
     const { app, db } = nuevaApi()
     seed(db)
     const r = (await app.inject({ method: 'GET', url: '/inventario' })).json()

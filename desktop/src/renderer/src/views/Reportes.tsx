@@ -1,4 +1,4 @@
-// HU-09 — Reportes de rotación, top productos y proveedores. Sin mockup: solo clases del mockup.
+// HU-09 — Reportes de rotación, top productos y proveedores.
 import { ROTACIONES, TOP_PRODUCTOS, TOP_PROVEEDORES, type Rotacion } from '@shared/constantes'
 import { rangoSchema } from '@shared/esquemas'
 import { capitalizar, hoyColombia, money, sumarDias } from '@shared/formato'

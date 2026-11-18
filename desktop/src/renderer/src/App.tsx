@@ -15,7 +15,7 @@ import Reportes from './views/Reportes'
 
 type Vista = 'cat' | 'sale' | 'ent' | 'baj' | 'inv' | 'prov' | 'caja' | 'rep'
 
-// Menú del mockup (constante N de render()) + pantallas de la Fase 3 (PLAN §7), en el orden del plan.
+// Menú lateral: pantallas de la app en orden.
 const N: [Vista, string][] = [
   ['cat', 'Catálogo'],
   ['sale', 'Nueva venta'],

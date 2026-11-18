@@ -1,4 +1,4 @@
-// HU-07 — Proveedores e historial de precios. Sin mockup: solo componentes y clases del mockup.
+// HU-07 — Proveedores e historial de precios.
 import { useState } from 'react'
 import { erroresPorCampo, numeroDe, precioProveedorSchema, proveedorSchema } from '@shared/esquemas'
 import { fdia, hoyColombia, money } from '@shared/formato'

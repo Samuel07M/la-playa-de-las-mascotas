@@ -1,4 +1,4 @@
-// HU-05 — Bajas de mercancía (vBaj, bSave del mockup).
+// HU-05 — Bajas de mercancía.
 import { useState } from 'react'
 import { MOTIVOS_BAJA } from '@shared/constantes'
 import { M } from '@shared/esquemas'

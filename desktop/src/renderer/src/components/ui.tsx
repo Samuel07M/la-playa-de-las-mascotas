@@ -1,4 +1,4 @@
-// Modal, Toast y ask(): mismo comportamiento que las funciones modal(), toast() y ask() del mockup.
+// Modal, Toast y ask(): ventanas de diálogo, avisos y confirmaciones.
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 
 interface Ui {
@@ -85,7 +85,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
   )
 }
 
-/** Encabezado de cada pantalla: hd() del mockup. */
+/** Encabezado de cada pantalla. */
 export function Encabezado({ titulo, sub }: { titulo: string; sub: string }) {
   return (
     <>
@@ -95,7 +95,7 @@ export function Encabezado({ titulo, sub }: { titulo: string; sub: string }) {
   )
 }
 
-/** Mensaje de error bajo un campo: er() del mockup. */
+/** Mensaje de error bajo un campo. */
 export function Er({ m }: { m?: string }) {
   return m ? <small className="er">{m}</small> : null
 }

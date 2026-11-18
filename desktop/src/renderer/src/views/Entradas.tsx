@@ -1,4 +1,4 @@
-// HU-04 — Entrada de mercancía (vEnt, eSave del mockup).
+// HU-04 — Entrada de mercancía.
 import { useState } from 'react'
 import { M } from '@shared/esquemas'
 import { fd } from '@shared/formato'

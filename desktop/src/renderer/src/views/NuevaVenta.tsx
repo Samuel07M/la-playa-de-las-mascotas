@@ -1,4 +1,4 @@
-// HU-03 — Nueva venta (vSale, grid, cartR, sell, doSell del mockup).
+// HU-03 — Nueva venta.
 import { useState } from 'react'
 import { money } from '@shared/formato'
 import type { MetodoPago } from '@shared/constantes'
@@ -29,7 +29,7 @@ export default function NuevaVenta() {
   const [enviando, setEnviando] = useState(false)
 
   // El cronómetro ya no se muestra en el recuadro, pero sigue midiendo cada venta: su tiempo
-  // aparece en el mensaje de confirmación (indicador de 4 minutos, PLAN §8).
+  // aparece en el mensaje de confirmación (indicador de 4 minutos).
 
   const prod = (id: number) => productos?.find((p) => p.id === id)
   const s = sq.trim().toLowerCase()

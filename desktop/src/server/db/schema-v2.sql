@@ -1,5 +1,5 @@
 -- Esquema v2 (PRAGMA user_version = 2): proveedores y precios (HU-07), compras por proveedor (HU-09),
--- cuadre de caja (HU-08) y mensajes del chat (HU-15). Decisiones en docs/PREGUNTAS.md (18 a 24).
+-- cuadre de caja (HU-08) y mensajes del chat (HU-15).
 
 -- HU-07: proveedores con teléfono y correo opcionales. Se desactivan, no se eliminan.
 CREATE TABLE proveedores (

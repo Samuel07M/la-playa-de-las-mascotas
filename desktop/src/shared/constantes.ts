@@ -1,4 +1,4 @@
-// Valores tomados literalmente del mockup aprobado.
+// Valores fijos de la aplicación.
 export const USUARIO = 'Isabel'
 export const CATEGORIAS = [
   'Alimento perros',

@@ -1,10 +1,10 @@
-// Formatos del mockup: money() y fd().
+// Formatos de moneda y fecha.
 const ZONA = 'America/Bogota'
 
 /** $62.000 — COP sin decimales. */
 export const money = (n: number): string => '$' + Math.round(n).toLocaleString('es-CO')
 
-/** "12 nov, 2:30 p. m." — mismo formato del mockup, en hora de Colombia. */
+/** "12 nov, 2:30 p. m." — en hora de Colombia. */
 export const fd = (iso: string): string =>
   new Date(iso).toLocaleString('es-CO', {
     day: '2-digit',
@@ -14,7 +14,7 @@ export const fd = (iso: string): string =>
     timeZone: ZONA
   })
 
-/** "efectivo" → "Efectivo", "dañado" → "Dañado" (así se muestran en el mockup). */
+/** "efectivo" → "Efectivo", "dañado" → "Dañado" (así se muestran en pantalla). */
 export const capitalizar = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s)
 
 /** Inicio y fin (instantes ISO UTC) de un día "AAAA-MM-DD" en hora de Colombia (UTC−5, sin horario de verano). */

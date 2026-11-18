@@ -1,4 +1,4 @@
-// Estado de pantalla que sobrevive al cambiar de vista, como las variables globales del mockup
+// Estado de pantalla que sobrevive al cambiar de vista
 // (búsqueda, carrito, método de pago, cronómetro, formularios de entrada y baja, filtros).
 import { useCallback, useState } from 'react'
 

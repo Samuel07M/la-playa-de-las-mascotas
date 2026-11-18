@@ -48,7 +48,7 @@ export interface FiltroProductos {
 }
 
 /**
- * Lista de productos con stock y alias. La búsqueda funciona igual que en el mockup:
+ * Lista de productos con stock y alias. La búsqueda:
  * coincide con nombre o categoría; si no, con un alias, y se indica cuál alias coincidió.
  */
 export function listarProductos(db: BaseDeDatos, f: FiltroProductos = {}): Producto[] {

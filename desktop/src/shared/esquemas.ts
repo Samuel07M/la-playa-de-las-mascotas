@@ -5,7 +5,7 @@ import { CATEGORIAS, METODOS_PAGO, MOTIVOS_BAJA } from './constantes'
 // («Invalid option: expected one of…»). Los campos de la API llevan además su mensaje sencillo (M).
 z.config(z.locales.es())
 
-// Mensajes copiados literalmente del mockup aprobado.
+// Mensajes de validación.
 export const M = {
   nombre: 'El nombre es obligatorio.',
   categoria: 'Selecciona una categoría.',
@@ -19,12 +19,12 @@ export const M = {
   productoBaja: 'Selecciona un producto.',
   motivoBaja: 'Debes seleccionar un motivo para guardar.',
   bajaSuperaStock: (stock: number) => `La cantidad supera el stock actual (${stock}).`,
-  /** Venta rechazada por falta de stock (cambio pedido por Samuel, docs/PREGUNTAS.md 34). */
+  /** Venta rechazada por falta de stock (HU-03). */
   ventaSinStock: (productos: { nombre: string; disponible: number }[]) =>
     'No hay stock suficiente de: ' +
     productos.map((p) => `${p.nombre} (disponible: ${p.disponible})`).join(', ') +
     '. No se registró la venta.',
-  // HU-07, HU-08 y HU-09 no tienen mockup: textos propuestos (docs/PREGUNTAS.md, 24).
+  // HU-07, HU-08 y HU-09.
   correo: 'Escribe un correo válido.',
   proveedorActivo: 'Selecciona un proveedor activo.',
   proveedorNoExiste: 'El proveedor no existe.',
@@ -33,7 +33,7 @@ export const M = {
   rango: 'La fecha inicial no puede ser posterior a la final.',
   efectivoContado: 'Indica el efectivo contado (entero, 0 o más).',
   digitalContado: 'Indica el monto digital recibido (entero, 0 o más).',
-  // Validaciones de la API sin texto en el mockup: mensajes cortos en español (PREGUNTAS 37).
+  // Otras validaciones de la API: mensajes cortos en español.
   metodoPago: 'Selecciona un método de pago: efectivo o digital.',
   activo: 'Indica si queda activo o inactivo.',
   texto: 'Escribe un texto válido.',
@@ -141,5 +141,5 @@ export function erroresPorCampo(error: z.ZodError): Record<string, string> {
   return r
 }
 
-/** Texto de un input numérico → número (o undefined si está vacío), como lo lee el mockup. */
+/** Texto de un input numérico → número (o undefined si está vacío). */
 export const numeroDe = (v: string): number | undefined => (v.trim() === '' ? undefined : Number(v))
